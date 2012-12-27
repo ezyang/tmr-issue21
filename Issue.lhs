@@ -12,9 +12,11 @@
 \usepackage{mflogo}
 \usepackage[all]{xy}
 
-\issue{Issue N}
+\issue{Issue 21}
 
-%\author{First Last\email{foo@example.com}}
+\author{Amy de Buitl\'eir\email{amy.butler@@ericsson.com}}
+\author{Michael Russell\email{mrussell@@ait.ie}}
+\author{Mark Daly\email{mdaly@@ait.ie}}
 
 \publishers{Edward Z. Yang, editor.}
 
