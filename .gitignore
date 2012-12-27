@@ -1,6 +1,10 @@
 Issue*.tex
-Issue*.pdf
+*.pdf
 *.aux
 *.log
 *.toc
 *.out
+*.ptb
+*.bbl
+*.blg
+deBuitleir.tex

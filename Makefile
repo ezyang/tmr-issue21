@@ -1,7 +1,7 @@
 issue = Issue
 
-#lhssources = 
-texsources = Editorial.tex
+lhssources = deBuitleir.lhs
+texsources = Editorial.tex deBuitleir.tex
 
 default: $(issue).pdf
 
@@ -20,9 +20,7 @@ clean:
 
 # put .bib files here
 bib :
-	bibtex tuples
-	bibtex mrmonad
-	bibtex haskell_errors
+	bibtex deBuitleir
 
 final : $(issue).pdf bib
 	pdflatex $(issue).tex

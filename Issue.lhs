@@ -9,6 +9,7 @@
 \usepackage{prettyref}
 \usepackage{accents}
 \usepackage{ifthen}
+\usepackage{mflogo}
 \usepackage[all]{xy}
 
 \issue{Issue N}
@@ -23,6 +24,6 @@
 \tableofcontents
 
 \article{Editorial}
-%\article{articlename}
+\article{deBuitleir}
 
 \end{document}
