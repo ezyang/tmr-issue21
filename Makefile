@@ -1,7 +1,7 @@
 issue = Issue
 
 lhssources = deBuitleir.lhs
-texsources = Editorial.tex deBuitleir.tex
+texsources = Editorial.tex deBuitleir.tex Jacobi.tex
 
 default: $(issue).pdf
 

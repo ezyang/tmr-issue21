@@ -3,6 +3,7 @@
 
 %include polycode.fmt
 
+\usepackage{amsmath}
 \usepackage[utf8x]{inputenc}
 \usepackage{listings}
 \usepackage{textcomp}
@@ -11,6 +12,8 @@
 \usepackage{ifthen}
 \usepackage{mflogo}
 \usepackage[all]{xy}
+\usepackage[euler]{textgreek}
+\usepackage{braket}
 
 \issue{Issue 21}
 
@@ -27,5 +30,6 @@
 
 \article{Editorial}
 \article{deBuitleir}
+\article{Jacobi}
 
 \end{document}

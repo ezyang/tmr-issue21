@@ -1,0 +1,1505 @@
+\documentclass{tmr}
+
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage[euler]{textgreek}
+\usepackage{braket}
+
+\lstset{language=Haskell,
+      basicstyle=\footnotesize,
+        keywordstyle=\color{black}\bfseries,                                         
+        frame=tb,
+        showstringspaces=false,
+        breaklines=true,
+        morekeywords={|getZipList,ZipList}     
+}
+
+\newcommand{\inftyint}{\int_{-\infty}^{+\infty}} 
+
+\title{Haskell ab initio: the Hartree-Fock Method in Haskell}
+\author{Felipe Zapata\email{felipe.zapata@edu.uah.es}}
+\author{Angel J. Alvarez\email{a.alvarez@uah.es}}
+
+
+\begin{document}
+
+\begin{introduction}
+
+Scientific computing is a transversal subject where professionals of several 
+fields join forces to get answers about the behaviour of Nature
+using a variety of models. In the development of this area
+FORTRAN has been the king for many years, but it is time to stop the 
+tyrannical reign. It has been years of the same awful programming style, but now
+it is time to use a language which offers a high level of abstraction 
+making the translation of equations to code straightforward, while adding
+conciseness and flexibility. Besides, introducing parallelism and 
+concurrency is of primary importance in modelling, but the lack of the modularity 
+and the appropriate tools for doing it in 
+the commonly used languages and methodologies, makes the most simple of
+the parallel tasks a real nightmare. Haskell is the language of choice
+basically because the abstraction levels supported 
+lead to a brief, elegant and efficient code. In this article, we will  
+begin discussing the implementation of a simple method for calculating
+all eigenvalues and eigenvectors of a symmetric matrix, then we will 
+describe a minimal but complete Haskell methodology, for the procedure known as 
+the Hartree-Fock method, which is widely used in computational quantum chemistry and
+physics for calculating recursively the eigenvalues of a mathematical entity
+which represent the quantized levels of energy of a molecule, while the eigenvectors make up
+the so called wave function, discussed in the article.
+ Do not be afraid about 
+the name of it, most of the technical details are skipped while we will focus mainly
+in the Haskell programming details.
+ 
+
+\end{introduction}
+
+
+\section{Joining two worlds}
+
+Haskell and the theory behind it has made us 
+ask ourself some irresistible questions like: have those equations written in the
+piece of paper the same mathematical meaning of those that we 
+have implemented in FORTRAN? If programming is as much of mathematical
+foundation as it is of artistic creation, then why are we still working
+with such twisted and ugly ideas? Then you ask the same questions to workmates
+and professors, and after while working locked in your
+office, you will find out that an angry mob of FORTRAN programmers is waiting outside
+ because you dared to say that a pure and lazy functional language is the future of 
+programming in science!. 
+
+Waiting that they get into the office, we will first describe 
+the Jacobi algorithm for calculating the eigenvalues
+and eigenvectors of a symmetric square matrix using the repa 
+library. Then, equipped with this useful recursive function 
+we will see some basic details of the Hartree-Fock methodology and
+the self consistent field (SCF) procedure for computing iteratively the eigenvalues
+and eigenvectors of a molecular system and how we can implement
+it in Haskell. In doing so, we will try to connect the simulation ideas with 
+the powerful abstraction system of Haskell.
+\par Moreover, there is an excellent collection of modules written by 
+Jan Skibinski for quantum mechanics and mathematics, but the approach used
+in those modules is different from ours~\cite{Skibinski}.
+
+
+\section{The Jacobi Algorithm}
+The Jacobi Algorithm is a recursive procedure for calculating all eigenvalues
+and eigenvectors of a symmetric matrix. If you have forgotten about the eigenvalue problem,
+ have a look at this~\cite{eigenvalue}. Given the standard matrix eigenvalue problem 
+(the \textlambda\ is a diagonal matrix containing the eigenvalues and it is not a function
+abstraction)
+
+\[\mathbf{Ax} = \lambda \mathbf{x}  \]
+the Jacobi algorithm is based on applying a transformation of the form 
+ \[\mathbf{A^*x^*} = \lambda \mathbf{x^*}  \]
+Where
+\[\mathbf{x^*} = \mathbf{Rx} \]
+\[\mathbf{A^*} = \mathbf{R^TAR} \]
+The transformation is applied to the standard eigenvalue problem
+in such a way that a similar expression is obtained whose 
+eigenvalues and eigenvectors are the same but the
+new expression {\textbf A\textsuperscript{*}} is diagonal. The matrix {\bf R} 
+is called the Jacobi rotation matrix~\cite{Jacobi},
+which is a orthogonal matrix (therefore {\textbf R\textsuperscript{-1}}= {\textbf R\textsuperscript{T}} the
+inverse is equal to the transpose matrix) with all the entries of the matrix equal
+ to zero but the diagonal and two off-diagonal elements
+in the positions kl and lk of the matrix, as show below.
+
+\[
+ \mathbf{R} =
+\begin{pmatrix}
+1 & 0 & 0 & \hdots & 0 & 0 \\
+0 & 1 & 0 & \hdots & 0 & 0 \\
+0 & \hdots & R_{k,k} & \hdots & R_{k,l} &  0 \\ 
+\vdots & \vdots & \vdots & \ddots & \vdots & \vdots \\
+0 &  \hdots & R_{l,k} & \hdots & R_{l,l} & 0 \\
+0 & 0 & \hdots & 0 & 0 & 1 \\ 
+\end{pmatrix}
+\]
+
+ When the similar transformation is applied over the matrix
+{\textbf A}, the off diagonal elements of the new matrix {\textbf A\textsuperscript{*}} are equal
+to zero, meaning that 
+{A\textsuperscript{*}\textsubscript{kl}} = {A\textsuperscript{*}\textsubscript{lk}} = 0.
+\par The Idea of the algorithm is to find the largest off-diagonal element of the matrix \textbf{A},
+ apply the rotation involving the row and column of the largest element and save the rotation matrix \textbf{R}. 
+Then, rotations are applied until all the off-diagonal elements are lower than a delta.
+The application of the Rotation Matrix \textbf{R} over the matrix \textbf{A} produces
+the new matrix {\textbf A\textsuperscript{*}} which elements are given by
+\begin{equation}\label{1} A^{*}_{kk} = A_{kk}  -  t A_{kl} \end{equation}
+\begin{equation}\label{2} A^{*}_{ll} = A_{ll} +   t A_{kl} \end{equation}
+\begin{equation}\label{3} A^{*}_{kl} =A^{*}_{lk} = 0       \end{equation}
+\begin{equation}\label{4}
+A^{*}_{kj} =A^{*}_{jk} = A^{*}_{kj} - s (A_{lj} + \tau A_{kj}), j \not = k \wedge j \not = l 
+\end{equation}
+\begin{equation}\label{5}
+A^{*}_{lj} =A^{*}_{jl} = A^{*}_{lj} + s (A_{kj} - \tau A_{lj}), j \not = k \wedge j \not = l 
+\end{equation}
+
+where s, t and \texttau\ are functions of A\textsubscript{kl}.
+
+\par Finally the eigenvalues are the diagonal elements of the final \textbf{A\textsuperscript{*}}
+ and the eigenvectors {\bf EV} 
+are columns of the matrix productory over all the Jacobi rotation matrices.
+\[ \mathbf{EV} = \prod_{i=1} \mathbf{R}_i \]
+Because of the sparse form of the rotation matrix the partial productory can 
+be calculated in each rotation step easily through the following transformation,
+\begin{equation}\label{6} R^{*}_{jk} = R_{ik}  -  s (R_{jl} + \tau R_{jk}) \end{equation}
+\begin{equation}\label{7} R^{*}_{jl} = R_{il}  +  s (R_{jk} - \tau R_{jl}) \end{equation}
+where {\textbf R\textsuperscript{*}} denotes the partial productory matrix.
+
+\section{Haskell Implementation} 
+The Repa library offers a novel and efficient
+way of doing operations over arrays, therefore the data structures
+and the functions of this library will be the basis for our 
+implementation. You can find a repa tutorial here~\cite{repa}.
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Jacobi Method]
+import Data.Array.Repa  as R
+
+type EigenValues = VU.Vector Double
+type EigenVectors = Array U DIM2 Double
+
+data EigenData = EigenData {
+             eigenvals :: !EigenValues
+           , eigenvec  :: !EigenVectors } deriving (Show)
+
+jacobiP ::  (Monad m,VU.Unbox Double) =>
+            Array U DIM2 Double  ->
+            m LA.EigenData
+jacobiP !arr = let (Z:. dim :. _dim) = extent arr
+                   tolerance = 1.0e-9
+               in  jacobi arr (LA.identity dim) 0 tolerance
+
+jacobi :: (Monad m, VU.Unbox Double)
+          => Array U DIM2 Double
+          -> Array U DIM2 Double
+          -> Step
+          -> Tolerance
+          -> m EigenData
+jacobi !arrA !arrP step tol
+
+  | step > 5*dim*dim = error "Jacobi method did not converge "
+
+  | otherwise = case abs maxElem > tol of
+       True -> do
+               arr1 <- rotateA arrA (matrixA arrA args)
+               arr2 <- rotateR arrP (matrixR arrP args)
+               jacobi arr1 arr2 (step+1) tol
+
+       False -> return $
+                EigenData (diagonalElems arrA) arrP
+
+  where (Z:. dim :. _dim) = extent arrA
+        sh@(Z:. k :. l) = maxElemIndex arrA
+        maxElem = arrA ! sh
+        args = parameters maxElem aDiff k l
+        aDiff = toval (l,l) - toval (k,k)
+        toval (i,j) = arrA ! (Z:. i :. j)
+\end{lstlisting}
+
+Since the matrix is a symmetric one, we can either work with the upper or lower
+triangular matrix. Then a repa unidimensional unboxed array or a bidimensional array
+ duplicating the data are suitable choices to represent our matrix. 
+We have chosen the bidimensional representation.
+
+The main function of the Jacobi has the signature depicted in Listing 1, where the Jacobi function takes as
+input a bidimensional array representing the symmetric matrix {\textbf A}, a bidimensional
+array for the rotational matrix {\textbf R}, the current iteration (an integer),
+the numerical tolerance which is a synonym for a double and
+finally the function returns an algebraic data type containing the eigenvalues
+and eigenvectors, represented as a unboxed vector and a repa bidimensional matrix, respectively.
+The \textit{jacobiP} function is the driver to initialize the rotation procedure, using
+the identity matrix as initial value of the matrix \textbf{R}. 
+
+The first guard in the Jacobi function takes care of the maximum number of rotations allowed
+to the function, where \textit{dim} is the number of rows (or columns) of the symmetric matrix.
+The second guard first checks that the greatest off-diagonal element of the symmetric
+matrix is larger than the tolerance. If the matrix is considered diagonalized, then the 
+EigenData value Constructor saves the eigenvalues contained in the diagonal of the symmetric
+matrix called \textit{arrA} and the final rotation matrix contained in \textit{arrP}.
+
+The parallel computation of the arrays in repa is abstracted using a generic 
+monad \textit{m}, as stated in the signature of the Jacobi Function,
+therefore \textit{rotateA} and \textit{rotateR} are monadic functions. Taking
+advantage of the syntactic sugar we extract the two new rotated matrices \textit{arr1} and
+\textit{arr2} and bind them to a new call of the Jacobi function.
+For calculating the \textit{k} and \textit{l} indexes, the \textit{maxElemIndex} function
+finds the largest index of the bidimensional array. Finally, the \textit{parameters} functions
+compute an algebraic data type containing the numerical parameters required for the rotation functions. 
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= rotateA function]
+rotateA :: (Monad m ,VU.Unbox Double) =>
+           Array U DIM2 Double ->
+           (Int -> Int -> Double) ->
+           m(Array U DIM2 Double)           
+rotateA !arr !fun =
+  computeUnboxedP $ fromFunction (extent arr)
+                  $ ( \sh@(Z:. n:. m) ->
+                    case n <= m of
+                         True -> fun n m
+                         False -> arr ! sh)
+
+matrixA :: VU.Unbox Double =>
+           Array U DIM2 Double ->
+           Parameters ->           
+           Int -> Int -> Double
+           
+matrixA !arr (Parameters !maxElem !t !s !tau !k !l) n m
+  | (n,m) == (k,l) = 0.0
+  | (n,m) == (k,k) = val - t*maxElem
+  | (n,m) == (l,l) = val + t*maxElem
+  | n < k && m == k = val - s*(toval (n,l) + tau*val)
+  | n < k && m == l = val + s*(toval (n,k) - tau*val)
+  | k < m && m < l && n == k = val - s*(toval (m,l) + tau*val)
+  | k < n && n < l && m == l = val + s*(toval (k,n) - tau*val)
+  | m > l && n == k = val - s*(toval (l,m) + tau*val)
+  | m > l && n == l = val + s*(toval (k,m) - tau*val)
+  | otherwise = val
+
+  where val = toval (n,m)
+        toval (i,j) = arr ! (Z :. i:. j)
+                   
+\end{lstlisting}
+In Listing 2 is shown the implementation of \textit{rotateA}. The key for the rotation
+implementation is the \textit{fromFunction} function which is included in the 
+repa library and has the following signature 
+\textit{fromFunction :: sh -> (sh -> a) -> Array D sh a}.
+This useful function tell us that if we want to create an array of a given shape,
+we must provide a function that takes an index as argument representing the entries of
+the new array, and with it calculate a numerical value somehow,
+generating a delay array that can be evaluated in parallel using the \textit{computeUnboxedP} function.
+Therefore, an anonymous lambda function has been created that first retrieves the entry with index sh 
+of the matrix to be diagonalized. Taking advance of the symmetric properties of the matrix, we can 
+rotate only the upper triangular matrix and leave the rest of the elements untouched. Therefore, we pass
+to rotateA the function \textit{matrixA} partially applied, this last function takes the indexes \textit{m}
+and \textit{n} for the upper triangular matrix and generates the numerical values using equations 
+\eqref{1} to \eqref{5}, leaving the values below the diagonal untouched.
+
+The implementation of \textit{rotateR} only differs from the previous one, in that
+equations \eqref{6} and \eqref{7} are used to calculate the numerical values and
+that the whole matrix is rotated not only the triangular part, as depicted in Listing 3.
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= rotateR function]
+rotateR :: (Monad m ,VU.Unbox Double) =>
+           Array U DIM2 Double ->
+           (Int -> Int -> Double) ->
+           m(Array U DIM2 Double)
+rotateR !arr !fun =
+  computeUnboxedP $ fromFunction (extent arr)
+                  $ ( \sh@(Z:. n:. m) -> fun n m)
+        
+matrixR :: VU.Unbox Double =>
+           Array U DIM2 Double ->
+           Parameters ->
+           Int -> Int -> Double
+matrixR !arr (Parameters !maxElem !t !s !tau !k !l) n m
+  | m == k = val - s*((toval (n,l)) + tau*val)
+  | m == l = val + s*((toval (n,k)) - tau*val)
+  | otherwise = val
+
+  where val = toval (n,m)
+        toval (x,y) = arr ! (Z:. x :. y)
+\end{lstlisting}
+
+\subsection{Performance: when to be lazy}
+
+As we already know, Haskell is a non-strict language, where major implementations (for instead GHC)
+use a strategy called call-by-need or laziness to evaluate the code~\cite{Laziness}. 
+
+There is a slight difference between laziness and non-strictness. Non-strict
+semantics refers to a given property of Haskell programs that you can rely on: 
+nothing will be evaluated until it is needed. The way we apply this strategy to 
+our code is by using a mechanism called lazy evaluation. Lazy evaluation is the 
+mechanism used by Haskell to implement non-strictness, using a device called thunk. 
+
+Laziness can be a useful tool for improving performance on large arrays as one would deploy
+schemes that do not need to evaluate all array members to compute certain matrix operations,
+but in the general case where most matrix values will be taken in account it will 
+reduce performance by adding a constant overhead to everything that needs to be evaluated.
+
+And because of laziness, normally the compiler will not evaluate function arguments and pass 
+the values to the function as in most languages with call-by-value strict semantics, 
+so it will record the expression in the heap in a suspension structure called thunk in case it is 
+evaluated later by the function. 
+
+Storing and then evaluating most thunks is costly, and unnecessary in this case, when we know 
+most of the time the complete array of values needs to be fully evaluated. So we will change the
+way some parts of the code behave forcing strictness where we know its better.
+Optimising compilers like GHC yet try to reduce the cost of laziness using strictness analysis
+ ~\cite{Strictness}, which attempts to determine if a function is strict in one or more of 
+its arguments, (which function arguments are always needed to be evaluated before entering the function). 
+Sometimes this leads to better performance where the compiler can hint itself on what is worth to evaluate
+strictly and what is not, but sometimes the programmer knows better what its worth 
+to evaluate beforehand.
+
+With bang patterns, we can hint the compiler about strictness on any binding form, 
+making the function strict in that variable. In the same way that explicit type annotations can 
+guide type inference, bang patterns can help guide strictness inference. Bang patterns 
+are a language extension, and are enabled with the Bang Patterns language pragma.
+
+Haskell also has the ability to manage strictness issues using the type system. We took advantage of such 
+capability and defined strictness for some of our data types, thus allowing to force evaluation whenever
+ those types are used. You can see that we also used unboxed variants of some the vector library,
+as those types are carefully coded to keep them unboxed most of the time. You can see some of our strict data
+types in Listing 4, following the suggestion given by the repa authors~\cite{bang}.
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Strict data types for eigenvalue operations]
+
+type EigenValues = VU.Vector Double
+type EigenVectors = Array U DIM2 Double
+data EigenData = EigenData {
+             eigenvals :: !EigenValues
+           , eigenvec :: !EigenVectors } deriving (Show)
+
+\end{lstlisting}
+
+So usually (at least while humans still can surpass compiler built-in intelligence) we can decide among several 
+ways to control strictness on certain functions or data structures. we have seen that Haskell has easy ways to do
+ this allowing to the programmer to tell the compiler where to be eager 
+about evaluating things. As we have seen before Jacobi's method its a recursive algorithm that
+ attempts to converge values below a certain threshold 
+in order to compute the desired {\textbf A\textsuperscript{*}} matrix.
+
+As we are using recursion we keep passing arguments every iteration and we need to ensure those arguments will be evaluated just before 
+we pass them, avoiding to carry thunks along the way. The GHC bang pattern extension allow us to force evaluation on those arguments, as shown
+in Listing 5.
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Jacobi strict argument passing]
+jacobi !arrA !arrP step tol
+...
+...
+               arr1 <- rotateA arrA (matrixA arrA args)
+               arr2 <- rotateR arrP (matrixR arrP args)
+               jacobi arr1 arr2 (step+1) tol
+...
+...
+\end{lstlisting}
+
+Generally, in the implementation of laziness the thunk is really just a pointer to a piece of (usually static) code, plus another pointer 
+to the data the code should work on. If the entity computed by the thunk is larger than the pointer to the code and the associated 
+data, then the thunk wins out in memory usage. But if the entity computed by the thunk is smaller, build the thunk ends up using 
+more memory that trying to evaluate the value eagerly.
+
+So we are going to force values to avoid those costly thunks while we manage to rotate our arrays, 
+converting them to strict forms ensuring that those operations are carried out before we use the results,
+and also in the spirit of the previously repa works we hope the conjunction of strict values 
+and tight loops will guide the compiler on the way of generating unboxed values as much as it is desired.
+
+\subsection{Performance: Exploiting muti-core}
+
+Ab-initio electronic structure methods like Hartree-Fock, as we will see,
+ have the advantage to give accurate solutions, if the approximations 
+are sufficiently small in magnitude. The downside of ab-initio methods
+ is their computational cost. They often take enormous amount of time, 
+memory and disk for describing the electrons, as we will see in the next section. The HF method scales nominally 
+as {\textbf N\textsuperscript{4}}, with N being the number of electrons in the system. 
+
+
+However in practice it can scale closer to {\textbf N\textsuperscript{3}} using heuristics,
+for instance some of the integrals that will be introduced in next sections are zero or extremely
+small and they are identified and neglect before the evaluation. Therefore we can employ this and some other
+schemes to alleviate costs through simplification of some multi-index integrals that reduce electronic densities. 
+Some of this techniques means diverse trade-off, but can sharply reduce the effective molecular size
+in term of cost, a major problem in the treatment of biologically-sized molecules.
+
+Despite the many methods that one can depict to alleviate complexity,
+ we must in first term try to squeeze the most computing power out of our machines
+and that is why there are people attempting to spread the computations across several cores.
+ Indeed we will not stop here, in the advent of the new Erlang-alike 
+distribution capabilities that Haskell begins to enjoy, we want to promote this new style of
+ coding as a better way of exploiting cloud computing among the 
+Computational Chemistry community.
+
+So we are concerned with the matrix manipulation routines in terms of multi-core computation,
+and this is where the repa shines, combined with strategies to build the source data in parallel fashion. In this way,
+we can enjoy the full spectrum of Haskell computational capabilities, using parallelism with strategies and
+concurrency (threads) on the repa side.
+
+All operating systems provide threads that work reasonably well, but they are far too expensive in terms 
+of resource management. Typical operating systems struggle to handle thousands of threads, whereas current state of 
+affairs requires to handle a large amount of them, well over hundred of thousands even millions of them, 
+provided that you will probably find that multi-core machines started to plague all computing
+niches even many core computing is commodity nowadays.
+
+Moreover green threads, otherwise known as lightweight threads
+or user-space threads, are a well-known technique for avoiding the overhead 
+of operating system threads. The idea is that threads are managed by the 
+program runtime itself, or a library (in the case of certain languages 
+that do not posses a process/thread abstraction), rather than by the operating system itself. 
+Managing threads in user space should be cheaper, because fewer traps into 
+the operating system are required but the drawback is that most user space threads 
+can not be scheduled into the cores, in most operating systems.
+
+These challenges not only concern to Haskell, we can see similar approaches
+in other languages, being Erlang one of the most prominent among the hall of 
+fame of massive concurrency promises. GHC designers are not behind when it 
+comes to solutions to the multi-core problems. These challenges have Brought their
+own solutions tied to the particular nature of the Haskell language,
+ using a intelligent mixture of Green threads and OS threads,
+as explained ~\cite{Peyton}.
+
+What that means when it comes to the repa library?, well Repa introduced
+delayed arrays that allows us to fuse multiple array operations, and 
+minimise the overhead of index-space transformions, that are one of the most
+common operations. Delayed arrays are represented by a function from indices 
+to array elements as we have seen before, in contrast with manifest arrays
+which are represented as contiguous blocks of unboxed values that other 
+languages like FORTRAN traverse all the time. 
+
+Fusion of operations on delayed arrays amounts to function composition, and 
+can dramatically save lot of computational cost while being easy to manage. 
+Delayed arrays can conveniently forced into manifest ones within repa by means 
+of a loop. In a FORTRAN or C program, the programmer writes explicit loops. 
+In Repa, the programmer never writes loops; the loops are in library functions.
+
+Moreover, Repa also introduced a more advanced array layout with delayed or manifest 
+arrays becoming a compound of extents and regions with multiple index functions, 
+allowing efficient stencil convolutions.
+
+Finally, repa makes use of the Haskell threads capabilities, and allows to optimize and
+distribute the calculation of the array elements in one or more tight loops running concurrently.
+
+
+\subsection{Benchmark}
+
+In order to establish a baseline to measure the performance of our code, 
+we use the Python code because this allow us compare between ``near C speed code``
+(Numpy) with the repa implementation. We developed a test framework consisting 
+on up to twenty independent runs for every Jacobi implementation in Python and Haskell.
+
+Every test run consists on an initial step that loads a text file containing
+the matrix to be diagonalized (we use a 100x100 matrix), then some code parses
+this file and transform the data into a suitable form, for the  function. 
+For the Python Numpy implementation we have chosen the built in Numpy array type
+as the data structure to manipulate the matrices. Finally the diagonalization is
+carried out, forcing the evaluation in the Haskell code to mimic the strict 
+semantics in the Python side. Our test bed was a Intel core i5 @2.5 GHz 
+laptop with 8GB RAM and OpenSuSE 11.4 x64 in which our Python code 
+ran on an average value of 60.2 seconds. 
+
+as we have little expertise with Haskell semantics and 
+how to fine tune Garbage collection so we did not tried at first to outperform the Python
+code, despite that repa seems to provide C speed performance, (consult Listings 15 onwards, in the appendix).
+Despite that, We get near Python times with very little effort, but we were concerned about garbage collection 
+issues, as our code showed consistently several seconds of garbage collection activity. Provided that Haskel
+delivers parallel garbage collection (from GHC 7.0 onwards) we tried to perform as much memory management in parallel
+as mutation activity, in order to free mutator threads (running repa threads mainly) from garbage related work.
+
+From GHC users manual ~\cite{ghc} we found some experimental switches to allow the RTS to perform such activities in parallel
+with user code and also the possibility of performing parallel garbage collection only on younger generations.
+We tried to see if this setup would allow repa threads to run concurrently with garbage collection without  
+disrupting each other.
+
+Being almost newcomers on this arena, we still are not certain about what is going on, but in the end we manage to low the 
+running times (mostly by lowering garbage collection times) but this is a matter we will work in the future 
+(we are afraid of that), as we are planning to build more routines in the future. Therefore we will provide
+ criterion based benchmarking facilities in our cabal package to allow readers to test and validate our measurements.
+
+\section{The Hartree-Fock Method}
+
+Once we are familiarized with the repa set of utilities and having
+a function for solving the eigenvalue problem, we are the position to talk about
+Hartree-Fock. In the beginning of the previous century it was discovered
+that the energy of physical systems is quantized (contradicting our intuition
+that it must be a continuous), then all the scientific community had no other choice that accept
+the mathematical beauty of the quantum theory, well supported by all the experiments~\cite{quantum}.
+ Equipped with this theory we can study whatever molecular system,
+if we are able to solve the Schr\"{o}dinger equation!~\cite{Schrodinger}.
+Then it began the race to develop approximate methods for solving the Schr\"{o}dinger equation and
+finally, in those mythological times, the Hartree-Fock method became
+the basis methodology upon which more accurate methods were developed~\cite{hartree-fock}.
+ 
+\par By the middle of the previous century, the first programs were written to solve the 
+iterative equations that are the core of the Hartree-Fock method as we will see, using
+the best language available at those times. The incredible thing is that the scientific community, even until
+this day, neither wanted nor understood the possibilities of changing the algorithms to 
+more powerful and expressive language, arguing the giant cost both in investment and programming time. Therefore 
+there is still an irrational and cruel practice spread in many universities for punishing Ph.D. students
+in physical and chemical departments, consisting in debugging thousand of lines of code in FORTRAN 77,
+bad written and worse documented. Not because many people have spoken about how to implement
+these things, nor because is written in many books or have been taught 
+for many generations, it means that it is the only and best way of programming scientific code.
+
+\par The idea of the method is to solve the time-independent Schr\"{o}dinger
+ equation that can be formulated as
+\[ \mathbf{H}\Psi = E\Psi \]
+
+Where \textPsi\ is the famous wave function and \textbf{H} is the Hamiltonian. 
+Let's picture the previous equation this way, assuming that the wave function 
+can be described through an analytical equation (for real systems we do not know the analytical form),
+like the exponential function of -\textit{\textalpha x},
+then the Hamiltonian carry out operations over the function, such as derive it two times 
+then add up the previous derivative to the function itself.
+That chain of operations should result in a number representing the energy
+multiplying the wave function itself.
+\par In quantum mechanics, the wave function contains all the possible system information that 
+we may need, and the operators represent properties that we can measure (called observables),
+extracting the information associated with the operator from the wave function.
+In the case of the Schr\"odinger equation the Hamiltonian operator extracts the energy. 
+In quantum mechanics there is not the concept of a trajectory, therefore we can not depict an electron
+as a tiny sphere travelling in a given direction with a particular velocity,
+see the uncertainty principle~\cite{uncertainty}. The only thing
+we can say is that there is a probability to find an electron
+around a specific region, therefore the operators provide us with mean values of this properties which are
+well correlated with experiments. 
+
+\par The only problem with the Schr\"odinger equation as stated previously
+is that we do not know how to solve it 
+(actually, it is know but for the most trivial case),
+then some approximations are introduced for bringing the equation into 
+a formulation that it is solvable. As we are only concerned
+in molecular system, the only relevant interactions are all the possible ones
+between nuclei and electrons, then we
+introduce the Born-Oppenheimer approximation which states that as the mass of the nuclei is several 
+orders of magnitude larger than the electron mass, it is possible to consider that electrons move in the 
+field of fixed nuclei. In other words, the nuclei are so heavy with respect to the electrons that the last ones move 
+at much shorter time-scale than the nuclei. So from now on we will only be interested in solving 
+the part of the system than involves only the electrons. Do not run away, we are almost ready for having fun.
+
+\par To approximate the electronic wave function indicated as \textPhi\textsubscript{elec}
+we will use a productory of monoelectronic functions, each monoelectronic
+function (actually, the square of it) gives us an idea of the probability to find an electron around 
+a nucleus. Each of these functions depends on the coordinates of the electron which represents and depends also 
+parametrically on the coordinates of the nucleus around which is most probable to 
+find the electron. This electronic wave function is expanded as follows, 
+\begin{equation}\label{8}
+ \Phi_{elec}(\mathbf{r_{1}},\mathbf{r_{2}},...,\mathbf{r_{n}}) =
+ \chi_{1}(\mathbf{r_{1}})\chi_{2}(\mathbf{r_{2}})...\chi_{n}(\mathbf{r_{n}})
+ \end{equation}                                                                                                                
+where r\textsubscript{i} is the coordinate of the nth electron.
+
+And then we can redefine the electronic Schr\"odinger equation as a set of n-coupled equations of 
+the form 
+\begin{equation}\label{9}
+ f_{i}\chi_{i}(\mathbf{r_{i}}) = \epsilon_{i}\chi_{i}(\mathbf{r_{i}})
+\end{equation}
+where \textit{f\textsubscript{i}} is the so called Fock operator which is made up
+of three operators, 
+\begin{equation}\label{10}
+\hat f_{i} = \hat T_{i}  + \hat V_{i} + \hat V^{HF}_{i} 
+\end{equation}
+
+The first term in the Fock operator takes into account the kinetic energy, the second
+the electronic interactions between nuclei and the \textit{ith} electron and the last term
+is the expression for the interaction between the \textit{ith} electron 
+and all other electrons.
+
+\subsection{The Basis Set}
+For representing the monoelectronic functions of equation \eqref{8} a set of Gaussian 
+functions is usually used. We will refer to the list of Gaussian functions for 
+expanding the monoelectronic functions as the basis set. The Gaussian
+functions have the form,
+\begin{equation}\label{11}
+\phi(\mathbf{R},\alpha,l,m,n) = x^{l}y^{m}z^{n} e^{-\alpha\mathbf{R^{2}}}
+\end{equation}
+Every basis set depends on of the nuclear coordinates around
+which the expansion is made denoted by \textbf{R}. Each monoelectronic 
+function is expressed as linear combination of M Gaussian 
+functions each of them multiplied by a coefficient,
+\begin{equation}\label{12}
+\chi_{i} = \sum_{\mu = 1}^{M} C_{\mu i} \phi_{\mu}
+\end{equation}
+This expansion should contain infinite terms, in order to 
+fully describe the function expanded. But if we
+want to compute something at all, we should choose a finite basis.
+
+\subsection{The Roothaan-Hall Equations}
+In this section we will ask you, dear Haskeller, an act of faith. Please believe us,
+that once you have introduced a basis set you can transform the set of equations into
+\eqref{9} a matricial problem of the form 
+\begin{equation}\label{13}
+\mathbf{FC} = \mathbf{SC\epsilon}
+\end{equation}
+where now, the Fock \textbf{F} operator has a matricial representation, 
+\textbf{C} is a matrix containing the coefficient of \eqref{12}, \textbf{\textepsilon}
+is a diagonal matrix containing the energies for every equation like \eqref{9} and finally
+the \textbf{S} matrix called the overlap matrix, whose meaning will be discussed below.
+
+\par Matrices representing operators are Hermitian matrices, which are the generalization
+of symmetric matrix with complex entries~\cite{hermitian}. But do not worry about it, our representation
+contained only real entries and therefore are symmetric matrices. The Fock matrix entries 
+are given by the following set of integrals,
+\[ \int{\phi^{*}_{\mu}(\mathbf{r_{i}}) \mathbf{\hat F} \phi_{\nu}(\mathbf{r_{i}}) \mathbf{dr_{i}}} =
+ \mathbf{F}_{\mu \nu} \]
+Paul Dirac introduced a shorter and elegant notation for 
+this kind of integrals (see~\cite{bra-ket}). Using the Dirac notation, these integrals are rewritten as
+\begin{equation}\label{14}
+ \braket{\phi_{\mu} \mid \mathbf{\hat O} \mid  \phi_{\nu}}  = \mathbf{O}_{\mu \nu} 
+\end{equation}
+These notation will be adopted in the next section.
+
+The overlap  matrix results as collateral effect of expanding the monoelectronic 
+functions using a basis which functions are not orthogonal to each other. The nature 
+of the overlap matrix can be visualized if you think about a 2-dimensional vector:
+you can write any real 2-dimensional vector using a linear combination of the two
+vectors (1,0) and (0,1), they are orthogonal to each other. But in the case 
+of using a basis that is not orthogonal, non-linear terms will appear and 
+it is not possible to represent the vector as a linear combination, 
+but if you manage to normalize the basis in some way, a linear expansion can
+be used with the new normalized basis. In the same fashion, if you make a linear expansion 
+of a function in some basis, the functions of the basis must be orthogonal
+to each other. Each element of the overlap matrix has the form show below.
+\begin{equation}\label{15}
+S_{ij} = \inftyint {dz \inftyint {dy \inftyint {\phi^{*}_{i} \phi_{j}dx}}} 
+\end{equation}
+
+A orthogonalization procedure makes one the elements for which \textit{i=j} in \eqref{14}, and
+the rest of elements become zero. Now we will put all the pieces together in the implementation, 
+even though some details will be introduced as needed.
+
+
+\subsection{A First Guess: The Core Hamiltonian}
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Operators definition]
+type NucCoord = [Double]
+
+data Operator =  T | V NucCoord
+                 deriving Show
+
+(<<|) :: (NucCoord,Basis) -> Operator ->  ((NucCoord,Basis),Operator)
+b1 <<| op  = (b1,op)
+
+(|>>) ::  ((NucCoord,Basis),Operator) -> (NucCoord,Basis) -> Double
+(b1,op) |>> b2 = case op of
+                T -> tijTotal b1 b2
+                V rc -> vijTotal b1 rc b2
+
+kinetic_12   = (r1,b1) <<| T |>> (r2,b2)
+potential_12 = (r1,b1) <<| V r3 |>> (r2,b2)
+\end{lstlisting}
+
+In Listing 6, it is shown the infix notation that represents the Dirac notation:
+every monoelectronic function over which the operator is applied,
+is represented by a tuple containing the basis in which the function is expanded 
+and the nuclear coordinates. Then, an algebraic data type is used for representing the
+operators that make up the Fock operator. Using the two infix operators of Listing 6
+we can squeeze the operators of \eqref{10} in the middle of the
+two monoelectronic functions and we have a representation in Dirac notation, as exemplified
+but the kinetic and potential expressions in Listing 6. We use the Dirac notation as
+synonym for other function behind the scenes, helping with the readability of the code.
+
+
+The matricial representation of the kinetic and electron-nucleus operators has 
+an analytical solution, but for the interaction among the electrons we do not have 
+an analytical representation for more than 3 electrons interacting among themselves, this is the so called
+many-body problem~\cite{many-body}. Then for our first guess,
+we applied a very human principle: if you do not know how to solve some problem, ignore it!
+Hence, ignoring interactions among electrons we have our first representation for 
+the Fock Matrix, as depicted in Listing 7.
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Core Hamiltonian]
+
+hcore :: [NucCoord] -> [Basis] -> [ZNumber] -> Nelec -> Array U DIM1 Double
+hcore coords basis atomicZ nelec = 
+ LA.list2ArrDIM1 dim (cartProd `using` parList rdeepseq)
+
+ where dim = (nelec^2 + nelec) `div`2
+       list = zip coords basis       
+       cartProd = do
+          (i,atomi) <- zip [1..] list
+          (j,atomj) <- zip [1..] list
+          guard (i<=j)
+          let sumVij = foldl1' (+) . getZipList $
+                       (\z rc -> ((-z) * atomi <<|Vij rc|>> atomj))
+                         <$> ZipList atomicZ <*> ZipList coords
+          return $ (atomi <<|Tij|>> atomj) + sumVij
+
+\end{lstlisting}
+ 
+\par Before going into details about this matrix which is called the
+core Hamiltonian, let's take a look at its form. Below it is shown the equation
+describing the entries of the core Hamiltonian:
+\begin{equation}\label{16}
+HCore_{ij} =\braket{\chi_{i} \mid \mathbf{\hat T} \mid \chi_{j}} + 
+\sum_{k=1}^{N} \braket{\chi_{i} \mid \mathbf{\frac{1}{R_{k}}} \mid \chi_{i}} 
+\end{equation}
+
+Each element of the core Hamiltonian matrix is the sum of integrals represented through
+the Dirac notation of \eqref{14}. This equation tells us that each element is composed
+of the kinetic energy plus the summatory of interactions between one electron and all the N
+nuclei that make up the molecule.
+
+In agreement with the Dirac notation of Listing 6, in our implementation we represent the
+monoelectronic function \textchi \textsubscript{i} with a tuple 
+(\textbf{r\textsubscript{i}},basis), containing the nuclear coordinates 
+and the basis for doing the expansion of \eqref{12}.
+
+In Listing 7, it is shown the Haskell implementation of our first representation of 
+the Core Hamiltonian. Since the matrix is a symmetric one we have decided to implemented it
+as a unidimensional array containing the upper triangular matrix.
+The function for calculating the matrix, requires the nuclear coordinates of all atoms, the basis used
+for expanding the monoelectronic functions, the charge of each atom (the \textit{Znumber}),
+this last number being necessary to calculate the electronic attraction 
+between nuclei and electrons, and finally the number of electrons. Firstly, we
+calculate the entries of the matrix as a parallel list exploding the parallel strategies,
+triggering a spark for each element of the list representing the monoelectronic functions, 
+(see more about strategies here :~\cite{strategies}). For taking maximal advantage
+of the sparks system, a right level of granularity must be chosen, this means that 
+each monoelectronic function which depends on a number of Gaussian functions, should contain
+a minimal set in order to balance the charge in the processors if we want to be able to
+speed up the calculation. This is a good thing, because in real calculations we
+have very large basis sets.
+
+After we have evaluated the list, using the auxiliary functions \textit{list2ArrDIM1}
+and the dimension of the array, the list is transformed into an unboxed unidimensional repa array.
+The building of the list containing the entries of the core Hamiltonian called \textit{cartProd},
+takes advantage of the list monad. We first form a list of tuples representing the monoelectronic
+functions zipping all the coordinates with their respective basis and then we generate the
+indexes \textit{i},\textit{j} and the associated monoelectronic functions for those 
+indexes in the core Hamiltonian matrix. Using a guard we ensure that only the indexes of
+upper triangular matrix are taken into account. Then according to \eqref{17} we return
+the result of applying the kinetic operator to two monoelectronic functions plus a summatory
+which use the applicative style and the alternative applicative functor instance of the list functor, the
+\textit{ZipList} instance. There is a lambda function that accepts two parameters, the atomic number Z and
+the nuclear coordinates and return the desired interaction.  We first lift the lambda function applying it
+to every element of the \textit{ZipList} which contains all the atomic numbers and then we apply the 
+functor ZipList of partial applied functions to the functor \textit{ZipList} 
+containing all the coordinates. Finally we fold over the final list after extracting
+the result with \textit{getZipList}.
+
+\subsection{The overlap matrix and the Jacobi Method}
+
+In the previous section we have learnt how to build a first guess to the Fock matrix,
+but for solving our target equation \eqref{13} we need to get rid of the overlap matrix.
+A transformation for the overlap matrix is required in such a way that the overlap matrix
+is reduced to the identity matrix as follows,
+
+\begin{equation}\label{17}
+ \mathbf{X^{\dagger}SX} = \mathbf{1}
+\end{equation}
+Where \textbf{1} is the identity matrix. 
+
+\par The famous physicist Per-Olov L\"owdin, proposed the following transformation,
+\begin{equation}\label{18}
+\mathbf{X} = \mathbf{S^{-\frac{1}{2}}} 
+\end{equation}
+
+Because \textbf{S} is an Hermitian matrix  \textbf{S\textsuperscript{-1/2}} is Hermitian too,
+which means that the transpose of the matrix, is the matrix itself (it the matrix is
+symmetric the transpose matrix is equal to the matrix itself)
+\[ \mathbf{{S^{-\frac{1}{2}}}^{\dagger}} = \mathbf{S^{-\frac{1}{2}}} \]
+then
+\[ \mathbf{S^{-\frac{1}{2}}\ S\ S^{-\frac{1}{2}}} =  \mathbf{S^{-\frac{1}{2}} S^{\frac{1}{2}}}
+= \mathbf{S^0} = \mathbf{1}
+\]
+When it is applied the transformation in \eqref{14},
+we get a new set of equations of the form
+\begin{equation}\label{19}
+\mathbf{F'C'} = \mathbf{C'\epsilon} 
+\end{equation}
+where 
+\begin{equation}\label{20}
+\mathbf{F'} = \mathbf{X^{\dagger}FX} \text{ and }  \mathbf{C'} = \mathbf{X^{-1}C}
+\end{equation}
+Finally we arrive to a standard eigenvalue problem, but first we need to generate
+the transformation of \eqref{17} that is called a symmetric orthogonalization. The
+matrix \textbf{S\textsuperscript{-1/2}} can be visualized as the application of the 
+function square root to the matrix \textbf{S}. For calculating a
+function over a diagonal matrix we simply apply the function
+over the diagonal elements. For non-diagonal matrices they should be first diagonalized, then
+the function is applied over the diagonal elements. Therefore the \textbf{S\textsuperscript{-1/2}}
+matrix is given by,
+\begin{equation}\label{21}
+\mathbf{S^{-\frac{1}{2}}} = \mathbf{U{s^{-\frac{1}{2}}}U^{\dagger}}
+\end{equation}
+where the lower case \textbf{s\textsuperscript{-1/2}} is a diagonal matrix. 
+
+\par The Jacobi algorithm can be used for diagonalizing a matrix \textbf{M},
+where the eigenvalues calculated are the entries of the diagonal matrix
+and the eigenvectors make up the matrix that diagonalized \textbf{M},
+which are denoted as \textbf{U} in \eqref{21}. 
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Symmetric Orthogonalization]
+import qualified LinearAlgebra as LA
+import qualified Data.Vector.Unboxed as VU
+
+symmOrtho :: (Monad m, VU.Unbox Double) 
+             => Array U DIM2 Double 
+             -> m (Array U DIM2 Double)
+symmOrtho !arr = do
+symmOrtho arr = do
+  eigData <- jacobiP $ arr
+  let eigVal = LA.eigenvals eigData
+      eigVecs = LA.eigenvec  eigData
+      invSqrt = VU.map (recip . sqrt) eigVal
+      diag = LA.vec2Diagonal invSqrt
+  eigVecTrans <- LA.transpose2P eigVecs
+  mtx1 <- LA.mmultP eigVecs diag
+  LA.mmultP mtx1 eigVecTrans
+\end{lstlisting}
+
+In Listing 8 is depicted the symmetric orthogonalization procedure to calculate
+the \textbf{S\textsuperscript{-1/2}} matrix, the \textit{LinearAlgebra} module 
+contains some subroutines tailored for making matricial algebra using repa.
+ Some of the functions there are taken from the repa examples~\cite{repaExam},
+the rest are based on the repa library functions. The \textit{symmOrtho} 
+function only requires the overlap matrix, which is first diagonalized using 
+the Jacobi algorithm, resulting in an algebraic data type containing the eigenvalues
+ as a unboxed vector and the eigenvectors  as a bidimensional matrix. The \textit{eigenvals} 
+and \textit{eigenvec} are accessor functions
+for retrieving the eigenvalues and eigenvectors, respectively.
+Then the inverse square root of the eigenvalues is taken and with the resulting vector
+a new diagonal matrix is created using \textit{vec2Diagonal}. Finally, using
+the repa-examples, functions \textit{transpose2P} and \textit{mmultP}, which are 
+the transpose and the matrix multiplication functions, respectively. The diagonal
+function is multiplied by the matrix containing the eigenvalues and by its transpose,
+resulting in the desired \textbf{X} matrix of \eqref{18}.
+
+Using the symmetric orthogonalization procedure and the Jacobi method, equations \eqref{19}
+and \eqref{20} can be solved resulting in the energies for the first approximation.
+
+
+\subsection{The Variational Method}
+
+In the previous section we derived a first approximation for the time-independent 
+Schr\"odinger equation, but unfortunately we can not ignore the interactions 
+among electrons. It is not known an analytical formulation for the interaction
+of many electrons (in general for many particles), therefore only 
+interactions between pairs of electrons can be calculated and the
+force acting over an electron is calculated approximately as
+the average of the interacting pairs. The average is built using the coefficient
+for expanding the monoelectronic functions of \eqref{12}. The average force
+rises a fundamental question: how do we know that the chosen coefficients of \eqref{12}
+are the best ones for approximating the interactions among the electrons? The variational
+principle is the answer.
+
+\begin{theorem}[Variational Principle]
+Given a normalized function \textPhi, that vanish at infinity, then the expectation value 
+of the Hamiltonian is an upper bound to the exact energy, meaning that
+\[ \braket{\Phi \mid \mathbf{H} \mid \Phi} \geq \varepsilon_{0} \] 
+\end{theorem}
+
+This theorem states that if we have a function for representing \textPhi\textsubscript{elec},
+the resulting energy after applying the Hamiltonian operator over the function is always greater
+that the real energy. Because  \textPhi\textsubscript{elec} depends on the expansion coefficients of
+ of \eqref{12}, if we vary those coefficients in a systematic way we can generate 
+a better electronic wave function \textPhi\textsubscript{elec} and a more accurate value
+for the energy.
+
+In practice the variational theorem states that better \textPhi\textsubscript{elec} are
+obtained varying recursively a trial function.
+
+\subsection{The Contraction: Squeezing Dimensions}
+
+the recursive procedure described previously required the inclusion of the operator
+for describing the pair interactions between electrons. Then, the Fock Matrix can
+be reformulated as,
+
+\begin{equation}\label{22}
+ \mathbf{F} = \mathbf{HCore} + \mathbf{G}
+\end{equation}
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Computation of the  G matrix]
+import Data.Array.Repa  as R
+
+calcGmatrix !density !integrals =
+  computeUnboxedP $ fromFunction (Z:. dim)
+                  (\(Z :. i ) ->  sumAllS $
+                  fromFunction (Z :. nelec)
+                    (\( Z:. l) ->
+                    let vec1 = unsafeSlice density (getRow l)
+                        vec2 = map2Array integrals sortKeys (i,l)
+                              nelec
+                    in sumAllS . R.zipWith (*) vec1 $ vec2 ))
+
+  where getRow x = (Any :. (x :: Int) :. All)
+        (Z:. nelec :. _) = extent density
+        dim = (nelec^2 + nelec) `div` 2
+
+\end{lstlisting}
+
+Where the \textbf{G} term stands for the interactions between electrons.
+This term depends on the coefficients matrix in \eqref{13},
+and on two types of integrals associated with the interacting electrons 
+(\textit{J} and \textit{K}, called the Coulomb and interchange integrals).
+For giving an analytical expression to the previous term, let us define 
+a matrix that is function of the coefficients used for expanding the
+monoelectronic function, called the density matrix, whose elements
+are given by
+\begin{equation}\label{23}
+ P_{\alpha \beta} = 2\sum_{i=1} C_{\alpha i} C_{\beta i}
+\end{equation}
+where the summatory is carried out over the number of electrons.
+
+The elements of the  \textbf{G} matrix are given by,
+\begin{equation}\label{24}
+ G_{\alpha \beta} = \sum_{k=1}\sum_{l=1} P_{lk} * 
+(\braket{\alpha\beta \mid kl} - \frac{1}{2} \braket{\alpha l \mid k \beta })
+\end{equation}
+where
+\[J(\alpha,\beta,k,l) = \braket{\alpha\beta \mid kl} \]
+\[K(\alpha,l,k\beta,) = \braket{\alpha l \mid k \beta}\]
+
+In an imperative language the usual way for implementing the \textbf{G} matrix
+is to nest four loops, using a four dimensional array for saving the \textit{J} and \textit{K}
+integrals which depend on four indexes as shown in \eqref{23}, in such a way that manipulating 
+the four indexes in the innermost function is a real nightmare. In Haskell, surely we can do
+better using the abstraction power. 
+\par Before deepen in this multidimensional sea, a  rearrangement of \eqref{24} can help us
+to bring this equation to more familiar lands,
+
+\begin{equation} \label{25}
+G_{\alpha \beta} =
+\sum_{l=1}
+\begin{bmatrix}
+ P_{l1} & P_{l2} & \hdots & P_{ln} \\
+\end{bmatrix}
+\bullet
+\begin{bmatrix}
+\braket{\alpha \beta \mid \mid 1 l} & \braket{\alpha \beta \mid \mid 2 l} & 
+\hdots & \braket{\alpha \beta \mid \mid n l } \\
+\end{bmatrix}
+\end{equation}
+where 
+\begin{equation} \label{26}
+\braket{\alpha \beta \mid \mid k l} = 
+\braket{\alpha \beta \mid k l} - \frac{1}{2} \braket{\alpha l \mid k \beta} = 
+J - K 
+\end{equation}
+Equations \eqref{25} and \eqref{26} tell us that an entry of the 
+\textbf{G} matrix can be considered as a summatory over an array of 
+dot products between vectors.
+
+In Listing 9, it is shown the implementation for calculating the \textbf{G} matrix, which
+fortunately is a symmetric matrix too.  We use the recommended strategy suggested 
+for the repa authors, evaluating in parallel the whole array but using sequential
+evaluation for the inner loops. With the previous notes in mind, we begin our journey from
+the first \textit{fromFunction} which is in charge of building the whole array: we pass to
+this function the dimension of the final array (which is an upper triangular matrix) and 
+the function for building the elements. Notice that 
+as the implementation is done using unidimensional arrays for representing triangular
+matrices, the first index \textit{i} encodes the \textalpha\ and \textbeta\ indexes of
+\eqref{25}, meaning that \textit{i} should be decoded as the index of a bidimensional 
+array. According to equations \eqref{25} and \eqref{26} the first
+\textit{sumAllS} function adds up all the dot products, the innermost \textit{sumAllS}
+collects the elements of each dot product, while the repa \textit{zipWith} function carries out
+the desire dot operation between the vectors. The first vector is simply a row of the
+density matrix, the second vector deserves a detailed analysis. 
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= The Map to Array Function]
+map2Array :: M.Map [Int] Double 
+             -> ([Int] -> [Int])
+             -> (Int,Int) 
+             -> Nelec 
+             -> Array D DIM1 Double
+map2Array mapIntegrals sortKeys (i,l) nelec = 
+  R.fromFunction (Z:.nelec)
+     (\(Z:.indx) ->
+       let coulomb  = LA.map2val mapIntegrals $ sortKeys [a,b,indx,l]
+           exchange = LA.map2val mapIntegrals $ sortKeys [a,l,indx,b]
+       in coulomb - 0.5* exchange)
+                                                            
+  where ne = nelec-1
+        pairs = [(x,y) | x <- [0..ne], y <- [0..ne], x<=y ]
+        (a,b) = pairs !! i
+\end{lstlisting}
+ 
+As stated previously, in the traditional implementation a four dimensional array
+is chosen for storing the \textit{J} and \textit{K} integrals. But arrays are not
+the best way for storing data which is query many times and not in order. A Map 
+seems a more appropriated data structure for saving the integrals. Therefore 
+we have chosen the \textit{Map} structure, using as key a list of the four
+indexes for the integrals. Besides, the integrals have the following
+symmetry, 
+
+\begin{equation} \label{27}
+\begin{split}
+\braket{\alpha \beta \mid kl} = \braket{ \beta \alpha \mid kl} 
+= \braket{\beta \alpha \mid lk} = \braket{\alpha \beta \mid lk} \\
+= \braket{kl\mid \alpha \beta} = \braket{lk \mid \alpha \beta} 
+=\braket{lk \mid \beta \alpha} = \braket{kl\mid \beta \alpha}
+\end{split}
+\end{equation}
+
+Therefore we only need to calculate one of the eight integrals. But, a systematic
+way should be selected for choosing the indexes of the integral to be
+evaluated. The increasing order is a good election, then from the eight possible integrals
+only the integral with the lowest indexes is calculated and stored in a map. 
+
+In Listing 10 is depicted the implementation of the \textit{map2Array} function for
+calculating the vector of integrals used in the computation of the \textbf{G} matrix. The
+arguments of this functions are the map containing the integrals, a function 
+for sorting the keys, two indexes provided for the \textit{calcGmatrix} function
+and the total number of electrons. The two indexes are used for generating
+the key of the desired integral. The first of these indexes encodes the \textalpha\ and 
+\textbeta\ indexes of \eqref{24} and \eqref{25}, for decoding those indexes a list
+of tuples representing the indexes of a bidimensional matrix is calculated,
+then the \textit{ith} index of the unidimensional array corresponds to the indexes (\textalpha,\textbeta).
+The second index corresponds to the row of the density matrix according to \eqref{25}.Finally
+the \textit{map2val} function, which is a lookup function with some error reporting properties, 
+retrieves the required key for the map of integrals and builds the numerical values of the vector.
+Probably, some of you have been wondering why we have use a list of tuples for decoding 
+the indexes instead of using the functions \textit{toIndex} and \textit{fromIndex}
+provided by the class \textit{shape} of repa, The problem is that we are working with
+unidimensional representation of diagonal matrices and we can not use this pair of functions.
+If you are not sure of this, try to use the \textit{fromIndex} function in a flatten array representing
+a diagonal matrix.
+
+The \textit{map2Array} function returns a delay array for performance reasons: it is more efficient
+to carry the indices of the elements, performance some operations with them and finally
+evaluate the whole array than computing the array in each step~\cite{fusion}.
+
+\subsection{The Self Consistent Field Procedure}
+
+The variational method establishes the theoretical tool for computing the best
+wave function recursively. We have discussed the pieces of the Hartree-Fock
+method separately, now it is time to assemble the machinery. First a recipe of the 
+whole algorithm should be formulated. The recipe states that the SCF procedure is 
+as follows:
+  
+\begin{itemize}
+\item Declare the nuclear coordinates, the basis set and the nuclear
+charges of all atoms.
+\item Calculate all the integrals.
+\item Diagonalize the overlap matrix using equations \eqref{17} and \eqref{18}.
+\item Compute a first guess for the density matrix.
+\item Calculate the \textbf{G} matrix.
+\item Form the Fock matrix adding the core Hamiltonian and the \textbf{G} matrix.
+\item Compute the new Fock matrix \textbf{F'} using equation \eqref{20}.
+\item Diagonalize \textbf{F'} obtaining \textbf{C'} and \textepsilon'.
+\item Calculate the new matrix of coefficients \textbf{C} using \textbf{C} = \textbf{XC'}.  
+\item Compute a new density matrix using the above \textbf{C} matrix and \eqref{23}.
+\item Check if the new and old density matrix are the same within a tolerance.
+\item Compute again the \textbf{G} matrix in the case of the falsehood of the previous item. 
+\item Return the energies along with the Fock and the density matrices.
+\end{itemize}
+
+Now using the syntactic sugar of the monads, we can cook our Hartree-Fock cake. First 
+a function can be set for collecting all the required data before forming the 
+\textbf{G} matrix. In Listing 11 is the implementation of the \textit{scfHF} function acting
+as collector of the required data and as interface with client codes asking
+for Hartree-Fock calculations. the Algebraic data type containing the results 
+is also shown.
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= The Interface function]
+data HFData = HFData {
+           getFock      :: !(Array U DIM1 Double)
+         , getCoeff     :: !LA.EigenVectors 
+         , getDensity   :: !(Array U DIM2 Double)
+         , getOrbE      :: !LA.EigenValues
+         , getEnergy    :: !Double} deriving (Show)
+
+scfHF :: (Monad m, VU.Unbox Double)
+         => [NucCoord] 
+         -> [Basis]
+         -> [ZNumber]
+         -> Nelec
+         -> m (HFData)
+scfHF coords basis zlist nelec= do 
+        let core = hcore coords basis zlist nelec
+            density = LA.zero nelec
+            integrals = calcIntegrals coords basis nelec           
+        xmatrix <- symmOrtho <=< LA.triang2DIM2 $ mtxOverlap coords basis nelec
+        scf core density integrals xmatrix 0 500
+
+\end{lstlisting}
+
+The strict algebraic data type \textit{HFData} stores the Fock matrix as a triangular matrix, 
+the matrix of coefficients whose type \textit{EigenVectors} is a synonym for a bidimensional array,
+ the density matrix. The eigenvalues of the equation \eqref{19}, which are called the orbital energies,
+ are saved in data structure called 
+\textit{EigenValues} which is a synonym for a unboxed vector and finally 
+the total energy which is given by the following expression,
+\begin{equation}\label{28}
+E_{0} = \frac{1}{2} \sum_{i}\sum_{j} P_{ji}(HCore_{ij} + F_{ij})
+\end{equation}
+where \textbf{P} is the density matrix.
+
+The scfHF is in charge of building the core Hamiltonian and calculate the map containing
+the integrals for computing the \textbf{G} matrix (for the first guess of 
+the density matrix the zero matrix is usually used). The evaluation of the integrals 
+deserves its own discussion, we are not going to enter in any detail 
+about the calculation of the integral but the curious reader is 
+invited to take a look at the \textit{IntegralsEvaluation}
+module in~\cite{AngelyFelipe}. Besides, this function calculates the 
+\textbf{X} matrix using the overlap matrix according to equations \eqref{17}
+and \eqref{18}, but previous to apply the symmetric orthogonalization the upper triangular matrix
+should be reshape to a bidimensional symmetric matrix using the monadic function
+called \textit{triang2DIM2}. Finally the function which carries out the recursive part of
+the scf procedure is called. 
+
+The \textit{scf} function is depicted in Listing 12: the function takes as arguments
+the core Hamiltonian, the previous density matrix, the \textbf{X} matrix, the integer label
+of the current step and the maximum number of allowed steps. In case of exceeding
+the maximum number of steps, we want to finish immediately, therefore we leave the error
+to blow up in our face. If the maximum number of steps is not exceeded, the Fock matrix
+is calculated adding the core Hamiltonian and the \textbf{G} matrix together, this last matrix is
+calculated using the old density and the map of integrals.
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Self Consistent Field Function]   
+scf :: (Monad m, VU.Unbox Double)
+     => Array U DIM1 Double
+     -> Array U DIM2 Double
+     -> M.Map [Int] Double
+     -> Array U DIM2 Double
+     -> Step
+     -> Int
+     -> m(HFData)
+scf !core !oldDensity !integrals !xmatrix step maxStep
+                                                                   
+   | step < maxStep = do
+       fockDIM1 <- fock core oldDensity integrals
+       hfData <- diagonalHF fockDIM1 xmatrix
+       etotal <- variationalE core fockDIM1 oldDensity
+       let newHFData = hfData {getFock=fockDIM1, getEnergy=etotal}
+           bool =  converge oldDensity . getDensity $ newHFData
+       case bool of
+            True -> return newHFData
+            False -> scf core (getDensity newHFData) integrals
+                     xmatrix (step+1) maxStep
+
+   | otherwise =  error "SCF maxium steps exceeded"
+
+\end{lstlisting}
+
+Now, according to the recipe, we need to generate a new matrix \textbf{F'} using
+the \textbf{X} matrix and then resolve this standard eigenvalue problem obtaining
+the energies as eigenvalues and a new matrix of coefficients as eigenvectors. In order to
+do so, we have defined a \textit{diagonalHF} function defined in Listing 13. The \textit{newFock} 
+term on this function simply chains together two monadic functions which first take 
+the unidimensional Fock matrix and translate it to its bidimensional form, then apply
+equation \eqref{20} to the Fock matrix generating a bidimensional Fock matrix call \textit{fDIM2}
+which is diagonalized using the Jacobi method and then the new \textbf{F'} is reshape to
+a unidimensional array to be stored in the record. For retrieving the eigenvalues and eigenvectors of
+the resulting algebraic data type \textit{EigData}, we can use the arrow operator (\&\&\&)
+ in conjunction with the two accessor functions. Finally we obtain the new matrix of
+coefficients and the density. Because the total energy is not calculated in this point,
+a zero is added to the value constructor. 
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= The DiagonalHF Function]   
+
+diagonalHF :: (Monad m, VU.Unbox Double) 
+           => Array U DIM1 Double
+           -> Array U DIM2 Double 
+           -> m(HFData)
+diagonalHF fock1 xmatrix = do
+   fDIM2 <-newFock
+   f' <- LA.toTriang fDIM2
+   eigData <- jacobiP fDIM2
+   let (coeff,orbEs) = LA.eigenvec &&& LA.eigenvals $ eigData
+   newCoeff <- LA.mmultP xmatrix coeff
+   newDensity <- LA.calcDensity newCoeff
+   return $ HFData f' newCoeff newDensity orbEs 0.0
+
+  where newFock = (LA.unitaryTransf xmatrix) <=< LA.triang2DIM2 $ fock1
+
+\end{lstlisting}
+
+Once the record containing the Hartree-Fock data has been calculated and coming back
+to the \textit{SCF} function, we are in position to calculate the total energy using
+\eqref{28} and its implementation called the \textit{variationalE} function, shown in Listing 14.
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= The DiagonalHF Function]   
+
+variationalE ::(Monad m, VU.Unbox Double) => 
+                  Array U DIM1 Double -> 
+                  Array U DIM1 Double -> 
+                  Array U DIM2 Double  ->
+                  m Double
+variationalE core fockMtx oldDensity = 
+  (0.5*)`liftM` do
+  sumHF <- (R.computeUnboxedP $ 
+           R.zipWith (+) core fockMtx) >>= \arr ->
+           LA.triang2DIM2 arr
+  result <- LA.mmultP sumHF oldDensity
+  LA.tr result
+
+\end{lstlisting}
+
+Finally using the record syntax we introduce the
+total energy and the Fock matrix before the diagonalization procedure,
+because it is the one useful for further calculations and finally we 
+check for the convergence criteria. Based
+on the boolean return by the convergence function, it is decided if more
+variations of the coefficients are necessary of if we are done.
+
+\subsection{Final Remarks}
+
+We are by far not Haskell experts, only new kids in the school. Therefore all
+you feedback is more than good, please let us know your opinion about
+this project and we will try to answer your questions as best as we can.
+
+The code began as a challenge and playground for developing a big project 
+in Haskell. After some months and for our own astonishment, we found that
+apart from the tuning procedure for speeding up the calculation, we can
+easily design pretty complex structure with little effort. Many lesson 
+are still to be learnt, but Haskell powerful type system, besides the 
+community support with hundreds of libraries are from our point of view what will make 
+scientific software written in Haskell outstanding.
+
+The SCF procedure described in this article it is not the most use in
+the quantum chemistry packages due to convergence problems, instead a
+ method called direct inversion in the iterative subspace or direct
+inversion of the iterative subspace (DIIS) is used, this method is 
+based in SCF described above, we are working on its implementation.
+
+The set of modules making up the Hartree-Fock method, which will 
+become a package in a near future, are not a real competition
+for the electronic structure package found either in the market
+or in the academic community like these ones: (most of them
+written in FORTRAN)~\cite{software},
+but as far as we know it is the first one implemented in a 
+functional language. But unlike, the politics of one of the 
+most famous software in computational quantum chemistry, we
+will not demand you or ban you to use our code if you
+compare the performance or the results of our code with some
+other ~\cite{banned}. 
+
+Only remains to thank you dear Haskeller, for following us to these 
+lands, full of opportunities for applying the high abstraction level
+of Haskell to the challenge of simulating the natural phenomena. And
+Remember \textit{Just Fun ...or Nothing}. 
+
+\[\mathbf{BEWARE\;FORTRANIANS!!!} \]
+
+
+\[\mathbf{\hat{H}askell\: \Psi >>= \setminus E\: -> \Psi\: E }\]
+
+\section{Appendix}
+
+The following Listings depict several tests, performed to make comparison on diverese setting of the Haskell Run Time System 
+against the base line Python variant using Numpy.
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption=Haskell test run 1]
+/> jacobi-bench +RTS -N4 -s -RTS
+
+69,566,094,376 bytes allocated in the heap
+  66,061,024 bytes copied during GC
+    606,264 bytes maximum residency (3333 sample(s))
+    101,984 bytes maximum slop
+       5 MB total memory in use (1 MB lost due to fragmentation)
+
+                    Tot time (elapsed) Avg pause Max pause
+Gen 0   45088 colls,45087 par 26.25s 6.60s 0.0001s 0.0234s
+Gen 1   3333 colls, 3333 par  4.31s  1.04s 0.0003s 0.0205s
+
+Parallel GC work balance: 1.60 (7756716 / 4860339, ideal 4)
+
+           MUT time (Elapsed) GC time (elapsed)
+Task 0 (worker) : 16.00s (44.96s) 4.32s (6.09s)
+Task 1 (worker) :  0.00s (51.05s) 0.00s (0.00s)
+Task 2 (bound) :  19.18s (46.97s) 3.66s (4.08s)
+Task 3 (worker) : 15.16s (40.21s) 8.39s (10.84s)
+Task 4 (worker) : 17.02s (39.63s) 9.91s (11.42s)
+Task 5 (worker) : 16.17s (40.24s) 9.15s (10.81s)
+
+SPARKS:0 (0 converted,0 overflowed,0 dud,0 GC'd,0 fizzled)
+
+INIT  time   0.00s (0.00s  elapsed)
+MUT   time  88.41s (43.41s elapsed)
+GC    time  30.57s (7.64s  elapsed)
+EXIT  time   0.00s (0.00s  elapsed)
+Total time 118.98s (51.05s elapsed)
+
+Alloc rate  786,848,499 bytes per MUT second
+
+Productivity 74.3% of total user, 173.2% of total elapsed
+
+\end{lstlisting}
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption=Haskell test run 2]
+/> jacobi-bench +RTS -N2 -qg1 -k512K -H1M -s -RTS
+
+63,002,489,096 bytes allocated in the heap
+    53,857,224 bytes copied during GC
+     2,368,704 bytes maximum residency (1431 sample(s))
+       109,600 bytes maximum slop
+             7 MB total memory in use (1 MB lost due to fragmentation)
+
+                        Tot time (elapsed) Avg pause Max pause
+Gen  0 77545 colls,   0 par 2.60s 2.58s 0.0000s 0.0006s
+Gen  1 1431 colls, 1430 par 1.57s 0.77s 0.0005s 0.0021s
+Parallel GC work balance: 1.20 (1257580 / 1051806, ideal 2)
+
+                MUT time (elapsed) GC time(elapsed)
+Task  0 (worker) :25.29s (53.63s) 1.06s (1.07s)
+Task  1 (worker) :26.72s (54.09s) 0.61s (0.62s)
+Task  2 (bound)  :15.72s (52.27s) 2.43s (2.44s)
+Task  3 (worker) : 0.00s (54.71s) 0.00s (0.00s)
+SPARKS: 0 (0 converted,0 overflowed,0 dud,0 GC'd,0 fizzled)
+
+INIT    time    0.00s  (  0.00s elapsed)
+MUT     time   67.65s  ( 51.36s elapsed)
+GC      time    4.18s  (  3.35s elapsed)
+EXIT    time    0.00s  (  0.00s elapsed)
+Total   time   71.83s  ( 54.71s elapsed)
+Alloc rate    931,191,462 bytes per MUT second
+Productivity  94.2% of total user, 123.7% of total elapsed
+
+\end{lstlisting}
+
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption=Haskell test run 3]
+/> bin/jacobi-bench +RTS -N2 -qg1 -k512K -H1M -s -RTS
+
+63,002,282,072 bytes allocated in the heap
+  53,544,912 bytes copied during GC
+   2,368,704 bytes maximum residency (1432 sample(s))
+    109,600 bytes maximum slop
+        7 MB total memory in use (1 MB lost due to fragmentation)
+
+                 Tot time (elapsed) Avg pause Max pause
+Gen 0   76984 colls,   0 par  2.52s  2.49s   0.0000s  0.0005s
+Gen 1   1432 colls, 1431 par  1.52s  0.74s   0.0005s  0.0013s
+
+Parallel GC work balance: 1.20 (1260845 / 1050453, ideal 2)
+
+           MUT time (elapsed)    GC time (elapsed)
+Task 0 (worker) : 24.48s  (51.90s) 1.01s ( 1.01s)
+Task 1 (worker) : 25.95s  (52.32s) 0.60s ( 0.60s)
+Task 2 (bound)  : 15.46s  (50.56s) 2.35s ( 2.35s)
+Task 3 (worker) :  0.00s  (52.92s) 0.00s ( 0.00s)
+
+SPARKS: 0 (0 converted, 0 overflowed, 0 dud, 0 GC'd, 0 fizzled)
+
+INIT  time  0.00s ( 0.00s elapsed)
+MUT   time  65.80s ( 49.69s elapsed)
+GC   time  4.04s ( 3.23s elapsed)
+EXIT  time  0.00s ( 0.00s elapsed)
+Total  time  69.85s ( 52.92s elapsed)
+
+Alloc rate  957,423,828 bytes per MUT second
+
+Productivity 94.2% of total user, 124.3% of total elapsed
+
+\end{lstlisting}
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption=Haskell test run 4]
+/> ./bin/jacobi-bench +RTS -N2 -qg1 -k512K -s -RTS
+Loading Jacobi algorithm test data symm.txt file...
+Parsing Jacobi data...
+Normal benchmark:
+63,002,262,568 bytes allocated in the heap
+  52,620,728 bytes copied during GC
+   2,368,728 bytes maximum residency (1431 sample(s))
+    109,600 bytes maximum slop
+       7 MB total memory in use (1 MB lost due to fragmentation)
+
+                 Tot time (elapsed) Avg pause Max pause
+Gen 0   74693 colls,   0 par  2.47s  2.45s   0.0000s  0.0005s
+Gen 1   1431 colls, 1430 par  1.27s  0.60s   0.0004s  0.0017s
+
+Parallel GC work balance: 1.22 (1276879 / 1050446, ideal 2)
+
+           MUT time (elapsed)    GC time (elapsed)
+Task 0 (worker) :  23.49s  ( 49.02s)    0.83s  ( 0.83s)
+Task 1 (worker) :  24.95s  ( 49.20s)    0.64s  ( 0.65s)
+Task 2 (bound) :  15.47s  ( 47.69s)    2.16s  ( 2.16s)
+Task 3 (worker) :  0.00s  ( 49.85s)    0.00s  ( 0.00s)
+
+SPARKS: 0 (0 converted, 0 overflowed, 0 dud, 0 GC'd, 0 fizzled)
+
+INIT  time  0.00s ( 0.00s elapsed)
+MUT   time  63.79s ( 46.81s elapsed)
+GC   time  3.74s ( 3.04s elapsed)
+EXIT  time  0.00s ( 0.00s elapsed)
+Total  time  67.54s ( 49.85s elapsed)
+
+Alloc rate  987,532,156 bytes per MUT second
+
+Productivity 94.5% of total user, 128.0% of total elapsed
+
+\end{lstlisting}
+
+\begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption=Haskell test run 5]
+/> ./bin/jacobi-bench +RTS -N3 -qg1 -k512K -s -RTS
+
+63,013,258,200 bytes allocated in the heap
+  38,828,464 bytes copied during GC
+   2,897,696 bytes maximum residency (1115 sample(s))
+    117,792 bytes maximum slop
+       9 MB total memory in use (1 MB lost due to fragmentation)
+
+                 Tot time (elapsed) Avg pause Max pause
+Gen 0   52789 colls,   0 par  2.35s  2.33s   0.0000s  0.0005s
+Gen 1   1115 colls, 1114 par  1.18s  0.40s   0.0004s  0.0095s
+
+Parallel GC work balance: 1.27 (1046069 / 822802, ideal 3)
+
+           MUT time (elapsed)    GC time (elapsed)
+Task 0 (worker):  21.66s  (43.29s) 0.51s ( 0.56s)
+Task 1 (worker):  16.63s  (43.27s) 0.57s ( 0.58s)
+Task 2 (bound) :  15.87s  (41.86s) 1.98s ( 1.99s)
+Task 3 (worker):  20.32s  (43.40s) 0.40s ( 0.45s)
+Task 4 (worker):   0.00s  (43.85s) 0.00s ( 0.00s)
+
+SPARKS: 0 (0 converted, 0 overflowed, 0 dud, 0 GC'd, 0 fizzled)
+
+INIT  time  0.00s  ( 0.00s elapsed)
+MUT   time  74.42s (41.12s elapsed)
+GC    time  3.53s  ( 2.73s elapsed)
+EXIT  time  0.00s  ( 0.00s elapsed)
+Total time  77.95s (43.85s elapsed)
+
+Alloc rate  846,724,495 bytes per MUT second
+Productivity 95.5% of total user, 169.7% of total elapsed
+\end{lstlisting}
+
+\section{Acknowledgement}
+
+We want to thank Marco Marazzi for his help
+in the redaction of the paper and our advisor
+Professor Luis Manuel Frutos for his patient
+and thoroughly support, without
+him we would had been lynched by now!
+
+
+\begin{thebibliography}{12}
+
+\bibitem{Skibinski}
+  http://www.haskell.org/haskellwiki/Numeric\_Quest
+\bibitem{eigenvalue}
+  http://en.wikipedia.org/wiki/Eigenvalues\_and\_eigenvectors
+\bibitem{Jacobi}
+ http://en.wikipedia.org/wiki/Jacobi\_rotation
+\bibitem{repa}
+ http://www.haskell.org/haskellwiki/Numeric\_Haskell:\_A\_Repa\_Tutorial
+\bibitem{Laziness}
+  https://en.wikibooks.org/wiki/Haskell/Laziness
+\bibitem{Strictness}
+  https://http://www.haskell.org/haskellwiki/Performance/Strictness
+\bibitem{bang}
+  http://hackage.haskell.org/packages/archive/repa/3.2.2.2/doc/html/Data-Array-Repa.html
+\bibitem{Peyton}
+  http://www.aosabook.org/en/ghc.html
+\bibitem{ghc}
+  http://www.haskell.org/ghc/docs/latest/html/users\_guide/
+\bibitem{quantum}
+ http://en.wikipedia.org/wiki/Quantum\_mechanics
+\bibitem{Schrodinger}
+  http://en.wikipedia.org/wiki/Schr\"{o}dinger\_equation
+\bibitem{hartree-fock}
+  http://en.wikipedia.org/wiki/Hartree-Fock\_method  
+\bibitem{uncertainty}
+  http://en.wikipedia.org/wiki/Uncertainty\_principle
+\bibitem{hermitian}
+  http://en.wikipedia.org/wiki/Hermitian\_matrix
+\bibitem{bra-ket}
+  http://en.wikipedia.org/wiki/Bra-ket\_notation
+\bibitem{many-body}
+  http://en.wikipedia.org/wiki/Many-body\_problem
+\bibitem{strategies}
+  http://hackage.haskell.org/packages/archive/parallel/2.2.0.1/doc/html/Control-Parallel-Strategies.html
+\bibitem{repaExam}
+  http://hackage.haskell.org/package/repa-examples
+\bibitem{fusion}
+  http://www.cse.unsw.edu.au/~benl/papers/guiding/guiding-Haskell2012-sub.pdf
+\bibitem{software}
+  http://en.wikipedia.org/wiki/List\_of\_quantum\_chemistry\_and\_solid-state\_physics\_software
+\bibitem{banned}
+  http://www.bannedbygaussian.org/
+\bibitem{AngelyFelipe}
+
+
+
+
+
+\end{thebibliography}
+
+\end{document}
+
+
+
+
+
+
+
