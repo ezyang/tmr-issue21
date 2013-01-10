@@ -13,11 +13,13 @@
 
 \newcommand{\authornote}[3]{{\color{#2} {\sc #1}: #3}}
 \newcommand\ezy[1]{\authornote{edward}{blue}{#1}}
+\newcommand\amy[1]{\authornote{amy}{red}{#1}}
 
 \begin{document}
 
 \begin{introduction}
-We describe an approach to implementing a neural network \ezy{It's probably worth briefly explaining why neural networks are interesting}
+Neural networks can be useful for pattern recognition and machine learning.
+We describe an approach to implementing a neural network
 in a functional programming language,
 using a basic back-propagation algorithm for illustration.
 We highlight the benefits of a purely functional approach for both the development
@@ -26,16 +28,8 @@ Although the examples are coded in Haskell,
 the techniques described should be applicable to any functional programming language.
 \end{introduction}
 
-\ezy{I've fixed any comma splices that I found. Remember the general
-rule for a comma splice is, if there is a comma and then a conjunction,
-then the two parts split apart should stand alone as complete sentences.
-If they don't, then there should not be a comma.}
-
-\ezy{Also, an aside: you can use the dollar sign to demarcate mathematical equations;
-it's a lot less typing than begin math!}
-
 \section{Back-propagation}
-\textit{Back-propagation} is a common method of training artificial \ezy{Is this adverb necessary?} neural networks.
+\textit{Back-propagation} is a common method of training neural networks.
 After an input pattern is propagated forward through the network to produce an output pattern,
 the output pattern is compared to the target (desired) pattern,
 and the error is then propagated backward.
@@ -51,17 +45,18 @@ this is sufficient for demonstrating a functional approach to neural networks.
 \label{sec:neuralNetOverview}
 
 \subsection{An artificial neuron}
+\label{sec:artificialNeuron}
 
-Conceptually, \ezy{I think this word is unnecessary} the basic building block of an artificial neural network is the neuron, 
+The basic building block of an artificial neural network is the neuron, 
 shown in Figure \ref{fig:neuron}.
-It is characterized by~\cite{gurney_introduction_1997} \ezy{This cite style is awkward; I wonder what a good convention here is}
+It is characterized by the elements listed below~\cite{gurney_introduction_1997}.
 \begin{itemize}
-        \item a set of inputs \begin{math}x_i\end{math}, usually more than one;
-        \item a set of weights \begin{math}w_i\end{math} associated with each input;
-        \item the weighted sum of the inputs \begin{math}a = \Sigma x_i w_i\end{math};
-        \item an activation function \begin{math}f(a)\end{math} which acts on the weighted sum of the inputs,
+        \item a set of inputs $x_i$, usually more than one;
+        \item a set of weights $w_i$ associated with each input;
+        \item the weighted sum of the inputs $a = \Sigma x_i w_i$;
+        \item an activation function $f(a)$ which acts on the weighted sum of the inputs,
  and determines the output;
-        \item a single output \begin{math}y = f(a)\end{math}.
+        \item a single output $y = f(a)$.
 \end{itemize}
 
 \begin{figure}[H]
@@ -98,7 +93,8 @@ Hence, the number of neurons in the output layer must match the desired length o
 \end{figure}
 
 \subsection{Training the network}
-The \textit{error} \ezy{Of a what?} is a function of the vector difference \ezy{Looking at the level of detail you're using in the explanation here, it's probably worth defining this} between the output pattern 
+The \textit{error} of a neural network is a function of the difference
+between the output pattern 
 and the \textit{target pattern} (desired output).
 The network can be trained by adjusting the network weights with the goal of reducing the error.
 Back-propagation is one technique for choosing the new weights.~\cite{rumelhart-learning-1986}
@@ -142,14 +138,16 @@ implementation of the neuron is distributed among the following entities
 For the weight matrix, we use the \verb+Matrix+ type provided by \verb+hmatrix+.
 The inputs, outputs and patterns are all column vectors.
 We use the \verb+Matrix+ type for these as well,
-but we introduce the type synonym \ezy{I unbolded this, see also later; I don't think that type synonyms or record syntax are essential features of Haskell which made implementing neural networks easier, while first-class functions do seem to deserve the emphasis.} \verb+ColumnVector+.
+but we introduce the type synonym \verb+ColumnVector+.
 In Haskell, the \verb+type+ keyword defines an alternative name for an existing type;
-it does not define a new type. (A complete code listing is available from the authors, along with a sample character recognition application.) \ezy{A link to this implementation would be good!}
+it does not define a new type. 
+(A complete code listing, along with a sample character recognition application,
+is available online~\cite{deBuitleir-backprop-example}.)
 \begin{code}
 type ColumnVector a = Matrix a
 \end{code}
 
-The final element we need to represent the neuron \ezy{Wording here is awkward} is the activation function.
+The activation function is the final element needed to represent the neuron.
 Here, we encounter one of the advantages of a functional approach.
 Like most most functional programming languages,
 Haskell supports \emph{first-class functions}; 
@@ -166,17 +164,18 @@ and its first derivative.
 and we will need the derivative to apply the back-propagation method.)
 This helps to reduce the chance that the user will change the activation function 
 and forget to change the derivative. \ezy{Rhetorical question: why can't the derivative be computed automatically?}
-We define this type using Haskell's record syntax \ezy{Same as above unbolding},
+\amy{Do you mean why can't we just use ${\Delta f}/{\Delta y}$ rather than ${df}/{dy}$?
+I don't know!}
+We define this type using Haskell's record syntax,
 and include a string to describe the activation function being used.
 
 \begin{code}
-data ActivationSpec 
-    = ActivationSpec
-        {
-            asF :: Double -> Double
-          , asF' :: Double -> Double
-          , desc :: String
-        }
+data ActivationSpec = ActivationSpec
+    {
+      asF :: Double -> Double,
+      asF' :: Double -> Double,
+      desc :: String
+    }
 \end{code}
 
 The first field, \verb+asF+, is the activation function, which takes a \verb+Double+
@@ -187,21 +186,21 @@ It also takes a \verb+Double+ and returns a \verb+Double+.
 The last field, \verb+desc+, is a \verb+String+ value containing a description of the function.
 
 Accessing the fields of a value of type \verb+ActivationSpec+ is straightforward.
-For example, if the name of the value \ezy{Word choice} is \verb+s+,
+For example, if the name of the record is \verb+s+,
 then its activation function is \verb+asF s+,
 its first derivative is \verb+asF' s+,
 and its description is \verb+desc s+.
 
 As an example of how to create a value of the type \verb+ActivationSpec+,
-here is one for the identity function \begin{math}f(x) = x\end{math}, 
-whose first derivative is \begin{math}f'(x) = 1\end{math}.
+here is one for the identity function $f(x) = x$, 
+whose first derivative is $f'(x) = 1$.
 
 \begin{code}
 identityAS = ActivationSpec
     {
-        asF = id
-      , asF' = const 1
-      , desc = "identity"
+      asF = id,
+      asF' = const 1,
+      desc = "identity"
     }
 \end{code}
 
@@ -227,15 +226,15 @@ the appropriate \verb+ActivationSpec+ is defined below.
 tanhAS :: ActivationSpec
 tanhAS = ActivationSpec
     {
-        asF = tanh
-      , asF' = tanh'
-      , desc = "tanh"
+      asF = tanh,
+      asF' = tanh',
+      desc = "tanh"
     }
 
 tanh' x = 1 - (tanh x)^2
 \end{code} % Note to EZY: figure out why caret is being rendered funny
 
-At this point, we taken advantage of Haskell's support for \emph{first-class functions} to
+At this point, we have taken advantage of Haskell's support for \emph{first-class functions} to
 store functions in a record structure and to pass functions as parameters to
 another function (in this case, the \verb+ActivationSpec+ constructor).
 
@@ -243,24 +242,23 @@ another function (in this case, the \verb+ActivationSpec+ constructor).
 
 To define a layer in the neural network, we use a record structure
 containing the weights and the activation specification.
-The weights are stored in an \begin{math}n \times m\end{math} matrix,
-where \begin{math}n\end{math} is the number of inputs and \begin{math}m\end{math} is the number of neurons.
-The number of outputs from the layer is equal to the number of neurons, \begin{math}m\end{math}.
+The weights are stored in an $n \times m$ matrix,
+where $n$ is the number of inputs and $m$ is the number of neurons.
+The number of outputs from the layer is equal to the number of neurons, $m$.
 
 \begin{code}
-data Layer
-    = Layer
-        {
-          lW :: Matrix Double
-        , lAS :: ActivationSpec
+data Layer = Layer
+    {
+      lW :: Matrix Double,
+      lAS :: ActivationSpec
     }
 \end{code}
 
 The weight matrix, \verb+lW+, has type \verb+Matrix Double+.
 This is a matrix whose element values are double-precision floats.
-This type \ezy{While technically correct, it's a kind of awkward phrasing, because it kind of implies only the type is defined in hmatrix, which is not true; the implementation is there too!} is defined in the \verb+hmatrix+ package.
+This type and the associated operations are provided by the \verb+hmatrix+ package.
 The activation specification, \verb+lAS+ uses the type \verb+ActivationSpec+, defined earlier.
-Again we use the support for first-class functions \ezy{after the first bolding I'd hazard that we don't need to bold it anymore};
+Again we use the support for first-class functions;
 to create a value of type \verb+Layer+, 
 we pass a record containing function values into another function,
 the \verb+Layer+ constructor.
@@ -271,25 +269,17 @@ The network consists of a list of layers and a parameter to control the rate at 
 learns new patterns.
 
 \begin{code}
-data BackpropNet
-  = BackpropNet
+data BackpropNet = BackpropNet
     {
-      layers :: [Layer]
-    , learningRate :: Double
+      layers :: [Layer],
+      learningRate :: Double
     }
 \end{code}
 
 The notation \verb+[Layer]+ indicates a list whose elements are of type \verb+Layer+.
-We can create a value of type \verb+BackpropNet+ using an expression such as the following.
-
-\begin{code}
-layer = Layer { lW=w, lAS=s }
-\end{code}
-\ezy{Since you've already used record assignment syntax, either this explanation is redundant or needs to be moved up earlier.}
-
 Of course, the number of outputs from one layer must match the number of inputs to the next layer.
-We ensure this by not exporting \ezy{word choice (negation is awkward)} the \verb+BackpropNet+ constructor outside the module \ezy{also awkward; when you export, it's always going outside the module}
-and instead requiring the user to call a special function to construct the network. \ezy{The usual term for this is a smart constructor}
+We ensure this by requiring the user to call a special function
+(a ``smart constructor'') to construct the network.
 First, we address the problem of how to verify that the dimensions of 
 a consecutive pair of network layers is compatible.
 The following function will report an error if a mismatch is detected.
@@ -302,7 +292,10 @@ checkDimensions w1 w2 =
        else error "Inconsistent dimensions in weight matrix"
 \end{code}
 
-Assuming that no errors are found, \verb+checkDimensions+ simply returns the second layer in a pair. \ezy{The reason why the second layer should be returned is not obvious until we learn about scans a few sentences down.}
+Assuming that no errors are found, \verb+checkDimensions+ simply
+returns the second layer in a pair.
+The reason for returning the second layer will
+become clear when we see how \verb+checkDimensions+ is used.
 
 The constructor function should invoke \verb+checkDimensions+ on each pair of layers.
 In an imperative language, a for loop would typically be used.
@@ -311,13 +304,12 @@ However, there is a more straightforward solution using an operation called a \t
 There are several variations on this operation, 
 and it can proceed either from left to right, or from right to left.
 We've chosen the predefined operation \verb+scanl1+, read ``scan-ell-one'' (not ``scan-eleven'').
-\ezy{I probably would have placed the code snippet here}
-The l indicates that the scan starts from the left, 
-and the 1 indicates that we want the variant that takes no starting value.
 \begin{code}
 scanl1 f [x1, x2, x3, ...] == [x1, f x1 x2, f (f x1 x2) x3, ...]
 \end{code}
 
+The l indicates that the scan starts from the left, 
+and the 1 indicates that we want the variant that takes no starting value.
 Applying \verb+scanl1 checkDimensions+ to a list of weight matrices gives the following result
 (again assuming no errors are found).
 
@@ -325,14 +317,23 @@ Applying \verb+scanl1 checkDimensions+ to a list of weight matrices gives the fo
 scanl1 checkDimensions [w1, w2, w3, ...] 
   == [w1, checkDimensions w1 w2, 
          checkDimensions (checkDimensions w1 w2) w3, ...]
+\end{code}
+
+If no errors are found, then \verb+checkDimensions+ returns the second layer
+of each pair, so:
+
+\begin{code}
+scanl1 checkDimensions [w1, w2, w3, ...] 
+  == [w1, checkDimensions w1 w2, checkDimensions w2 w3, ...]
   == [w1, w2, w3, ...]
 \end{code}
 
 Therefore, if the dimensions of the weight matrices are consistent, this operation
 simply returns the list of matrices, e.g. it is the identity function.
+
 The next task is to create a layer for each weight matrix supplied by the user.
-In an imperative language, we might operate on each element in the weight matrix list using a for loop. \ezy{A bit repetitive, perhaps.}
-Instead, we will use the \verb+map+ function.
+%In an imperative language, we might operate on each element in the weight matrix list using a for loop. \ezy{A bit repetitive, perhaps.}
+%Instead, we will use the \verb+map+ function.
 The expression \verb+map buildLayer checkedWeights+ will return a new list,
 where each element is the result of applying the function \verb+buildLayer+ 
 to the corresponding element in the list of weight matrices.
@@ -346,11 +347,8 @@ buildLayer w = Layer { lW=w, lAS=s }
 Using the operations discussed above, we can now define the constructor function, \verb+buildBackpropNet+.
 
 \begin{code}
-buildBackpropNet 
-  :: Double 
-  -> [Matrix Double] 
-  -> ActivationSpec 
-  -> BackpropNet
+buildBackpropNet :: 
+  Double -> [Matrix Double] ->  ActivationSpec -> BackpropNet
 buildBackpropNet lr ws s = BackpropNet { layers=ls, learningRate=lr }
   where checkedWeights = scanl1 checkDimensions ws
         ls = map buildLayer checkedWeights
@@ -359,26 +357,67 @@ buildBackpropNet lr ws s = BackpropNet { layers=ls, learningRate=lr }
 
 \ezy{This code needs some seqs: the entire list should be bottom on a failed
 checkDimension, not just the failed layer}
+\amy{
+Although it's not as efficient, the way I did it has the advantage of being 
+simple, while providing an error message that indicates where the inconsistency
+occurs. For example, \verb|show badNet| gives something like:
+\begin{verbatim}
+BackpropNet {layers = [w=(2><3)
+ [ 3.4768131213769315e-2, 2.8801478944654235e-2, 0.45180900343559594
+ ,    0.4848721235878627,    0.8912643942896993,  0.8987028229229337 ], 
+ activation spec=identity,w=(3><2)
+ [ 3.4768131213769315e-2, 2.8801478944654235e-2
+ ,   0.45180900343559594,    0.4848721235878627
+ ,    0.8912643942896993,    0.8987028229229337 ], 
+ activation spec=identity,w=(2><3)
+ [ 3.4768131213769315e-2, 2.8801478944654235e-2, 0.45180900343559594
+ ,    0.4848721235878627,    0.8912643942896993,  0.8987028229229337 ], 
+ activation spec=identity,w=(*** Exception: Inconsistent dimensions in 
+ weight matrix
+\end{verbatim}
+So the user can tell that layer 3 is inconsistent with layer 2.
+I did create an alternative:
+\begin{code}
+buildBackpropNet lr ws s = approvedWeights `deepseq` 
+    BackpropNet { layers=ls, learningRate=lr }
+  where checkedWeights = scanl1 checkDimensions ws
+        ls = map buildLayer checkedWeights
+        buildLayer w = Layer { lW=w, lAS=s }
+        approvedWeights = concatMap toList (map flatten checkedWeights)
+\end{code}
+But of course then the error message is less useful:
+\begin{verbatim}
+*** Exception: Inconsistent dimensions in weight matrix
+\end{verbatim}
+And modifying that code to say which layer the occurred at makes
+things more complex than I think a Haskell beginner is really ready for.
+}
 
 The primary advantage of using functions such as \verb+map+ and \verb+scanl1+ is not
 that they save a few lines of code over an equivalent \textit{for loop}, but that these functions
-more clearly indicate the programmer's intent. \ezy{Rhetorical question: Why?}
+more clearly indicate the programmer's intent.
+For example, a quick glance at the word \verb+map+ 
+tells the reader that the \textit{same} operation will be performed on 
+\textit{every} element in the list, and that the result will be a
+\textit{list} of values.
+It would be necessary to examine the equivalent for loop more
+closely to determine the same information.
 
 \section{Running the Network}
 \label{sec:propagation}
 
 \subsection{A closer look at the network structure}
 
-The network \ezy{What network are you referring to?} consists of multiple layers of neurons, numbered from \begin{math}0\end{math} 
-to \begin{math}L\end{math}, as illustrated in Figure \ref{fig:propagation}.
+The neural network consists of multiple layers of neurons, numbered from $0$ 
+to $L$, as illustrated in Figure \ref{fig:propagation}.
 Each layer is fully connected to the next layer.
-Layer \begin{math}0\end{math} is the sensor layer.
+Layer $0$ is the sensor layer.
 (It performs no processing; 
-each neuron receives one component of the input vector \begin{math}\mathbf{x}\end{math} and 
+each neuron receives one component of the input vector $\mathbf{x}$ and 
 distributes it, unchanged, to the neurons in the next layer.)
-Layer \begin{math}L\end{math} is the output layer.
-The layers \begin{math}l = 1..(L-1)\end{math} are hidden layers.
-\begin{math}z_{lk}\end{math} is the output from neuron \begin{math}l\end{math} in layer \begin{math}l\end{math}.
+Layer $L$ is the output layer.
+The layers $l = 1..(L-1)$ are hidden layers.
+$z_{lk}$ is the output from neuron $l$ in layer $l$.
 
 \begin{figure}[H]
   \centering
@@ -391,17 +430,24 @@ The layers \begin{math}l = 1..(L-1)\end{math} are hidden layers.
 We use the following notation:
 
 \begin{itemize}
-  \item \begin{math}x_i\end{math} is the \begin{math}i\end{math}th component of the input pattern;
-  \item \begin{math}z_{li}\end{math} is the output of the \begin{math}i\end{math}th neuron in layer \begin{math}l\end{math};
-  \item \begin{math}y_i\end{math} is the \begin{math}i\end{math}th component of the output pattern.
+  \item $x_i$ is the $i$th component of the input pattern;
+  \item $z_{li}$ is the output of the $i$th neuron in layer $l$;
+  \item $y_i$ is the $i$th component of the output pattern.
 \end{itemize}
 
 
 \subsection{Propagating through one layer}
 
-The activation \ezy{Term not defined} of neuron \begin{math}k\end{math} in layer \begin{math}l\end{math} is
+The activation function for \ezy{Term not defined}\amy{I added the word ``function'' to clarify that I'm referring to the concept introduced in Section \ref{sec:artificialNeuron}.} neuron $k$ in layer $l$ is
 
 \ezy{Is the special case here necessary? In some treatments of neural networks I've seen, appropriate settings of $w$ are sufficient to make the second equation work out.  Obviously, if you do that you'll have to change your code too, but with any luck that would be for the better}
+\amy{I think I know what you mean.
+In early versions of the code, I had fixed weights for the sensor layer
+so that all layers had the same structure.
+However, I felt that the code would be somewhat more confusing to people
+who weren't very familiar with backprop. Eventually I re-vamped the code so 
+that it would parallel the presentation in Gurney \cite{gurney_introduction_1997} 
+and various web tutorials that I myself learned backprop from.}
 
 \begin{displaymath}
 a_{0k} = x_k
@@ -413,12 +459,12 @@ a_{lk} = \sum_{j=1}^{N_{l-1}} w_{lkj}z_{l-1,j}~~~~~~~~~~l > 0
 
 where 
 \begin{itemize}
-\item\begin{math}N_{l-1}\end{math} is the number of neurons in layer \begin{math}l-1\end{math}.
-\item\begin{math}w_{lkj}\end{math} is the weight applied by the neuron \begin{math}k\end{math} in layer \begin{math}l\end{math} to the input received from neuron \begin{math}j\end{math} in layer \begin{math}l-1\end{math}.
-(Recall that the sensor layer, layer \begin{math}0\end{math}, simply passes along its inputs without change.)
+\item$N_{l-1}$ is the number of neurons in layer $l-1$.
+\item$w_{lkj}$ is the weight applied by the neuron $k$ in layer $l$ to the input received from neuron $j$ in layer $l-1$.
+(Recall that the sensor layer, layer $0$, simply passes along its inputs without change.)
 \end{itemize}
 
-We can express the activation for layer \begin{math}l\end{math} using a matrix equation.
+We can express the activation for layer $l$ using a matrix equation.
 
 \begin{displaymath}
 \mathbf{a_l} = \left\{ 
@@ -435,14 +481,14 @@ The output from the neuron is
 z_{lk} = f(a_{lk})
 \end{displaymath}
 
-where \begin{math}f(a)\end{math} is the activation function.
+where $f(a)$ is the activation function.
 For convenience, we define the function \verb+mapMatrix+ which applies a function to each element of a matrix (or column vector).
-This is analogous to Haskell's \verb+map+ function. \ezy{In fact, matrices are functors!}
+This is analogous to Haskell's \verb+map+ function. \ezy{In fact, matrices are functors!}\amy{Good point, but I didn't want to introduce the concept of functors in this paper.}
 (The definition of this function is in the appendix.)
 Then we can calculate the layer's output using the Haskell expression \verb+mapMatrix f a+, where \verb+f+ is the activation function.
 
 If we've only propagated the input through the network, all we need is the output from the final layer, 
-\begin{math}\mathbf{z}_L\end{math}.
+$\mathbf{z}_L$.
 However, we will keep the intermediate calculations
 because they will be required during the back-propagation pass.
 We will keep all of the necessary information in the following record structure.
@@ -454,15 +500,16 @@ data PropagatedLayer
     = PropagatedLayer
         {
           -- The input to this layer
-          pIn :: ColumnVector Double
+          pIn :: ColumnVector Double,
           -- The output from this layer
-        , pOut :: ColumnVector Double
-          -- First derivative of the activation function for this layer
-        , pF'a :: ColumnVector Double
+          pOut :: ColumnVector Double,
+          -- The value of the first derivative of the activation function 
+          -- for this layer
+          pF'a :: ColumnVector Double,
           -- The weights for this layer
-        , pW :: Matrix Double
+          pW :: Matrix Double,
           -- The activation specification for this layer
-        , pAS :: ActivationSpec
+          pAS :: ActivationSpec
         }
     | PropagatedSensorLayer
         {
@@ -481,25 +528,22 @@ we need the full set of values.
 Now we are ready to define a function to propagate through a single layer.
 
 \begin{code}
-propagate
-  :: PropagatedLayer
-  -> Layer
-  -> PropagatedLayer
+propagate :: PropagatedLayer -> Layer -> PropagatedLayer
 propagate layerJ layerK = PropagatedLayer
         {
-          pIn = x
-        , pOut = y
-        , pF'a = f'a
-        , pW = w
-        , pAS = lAS layerK
+          pIn = x,
+          pOut = y,
+          pF'a = f'a,
+          pW = w,
+          pAS = lAS layerK
         }
   where x = pOut layerJ
         w = lW layerK
         a = w <> x
         f = asF ( lAS layerK )
-        y = mapMatrix f a
+        y = P.mapMatrix f a
         f' = asF' ( lAS layerK )
-        f'a = mapMatrix f' a
+        f'a = P.mapMatrix f' a
 \end{code}
 
 The operator \verb+<>+ performs matrix multiplication; it is defined in the \verb+hmatrix+ package.
@@ -507,7 +551,7 @@ The operator \verb+<>+ performs matrix multiplication; it is defined in the \ver
 
 \subsection{Propagating through the network}
 
-To propagate through the entire network, \ezy{Awkward: what are we propagating?}
+To propagate weight adjustments through the entire network,
 we create a sensor layer to provide the inputs
 and use another \textit{scan} operation,
 this time with \verb+propagate+.
@@ -521,10 +565,7 @@ scanl f z [x1, x2, ...] == [z, f z x1, f (f z x1) x2), ...]
 In this case, the starting value is the sensor layer.
 
 \begin{code}
-propagateNet
-  :: ColumnVector Double
-  -> BackpropNet
-  -> [PropagatedLayer]
+propagateNet :: ColumnVector Double -> BackpropNet -> [PropagatedLayer]
 propagateNet input net = tail calcs
   where calcs = scanl propagate layer0 (layers net)
         layer0 = PropagatedSensorLayer{ pOut=validatedInputs }
@@ -541,138 +582,171 @@ Its definition is straightforward.
 \subsection{The back-propagation algorithm}
 
 We use the matrix equations for basic back-propagation as formulated by Hristev
-~\cite[Chapter 2]{hristev_ann_1998}. \ezy{It's probably worth noting here how much you are going to recap, and how much you are going to defer to this reference.  I found the exposition here not very clear (and it certainly would not be clear to someone who has never used neural networks before), but if the point is to get the equations down so we can transcribe them into Haskell, that might be OK.}
-The back-propagation algorithm requires that we operate on each layer in turn, \ezy{This seems not quite accurate, since you first go forwards then you go backwards}
+~\cite[Chapter 2]{hristev_ann_1998}.
+(We will not discuss the equations in detail, only summarize them and show one 
+way to implement them in Haskell.)
+The back-propagation algorithm requires that we operate on each layer in turn
+(first forward, then backward)
 using the results of the operation on one layer as input to the operation on the next layer.
-The input vector \begin{math}\mathbf{x}\end{math} is propagated \emph{forward} through the network,
-resulting in the output vector \begin{math}\mathbf{z_L}\end{math},
-which is then compared to the target vector \begin{math}\mathbf{t}\end{math} (the desired output).
-The resulting error, \begin{math}\mathbf{z_L} - \mathbf{t}\end{math} is then propagated
+The input vector $\mathbf{x}$ is propagated \emph{forward} through the network,
+resulting in the output vector $\mathbf{z_L}$,
+which is then compared to the target vector $\mathbf{t}$ (the desired output).
+The resulting error, $\mathbf{z_L} - \mathbf{t}$ is then propagated
 \emph{backward} to determine the corrections to the weight matrices:
 
 \begin{equation}
-\label{eq:weightUpdate}
-W_{new}= W_{old}-\mu\nabla E
+  \label{eq:weightUpdate}
+  W_{new}= W_{old}-\mu\nabla E
 \end{equation}
 
-where \begin{math}\mu\end{math} is the learning rate, and \begin{math}E\end{math} is the error function.
-For \begin{math}E\end{math}, we can use
+where $\mu$ is the learning rate, and $E$ is the error function.
+For $E$, we can use
 the sum-of-squares error function, defined below.
 
 \begin{displaymath}
 E(W) \equiv \frac{1}{2} \sum_{q=1}^{N_L} [z_{Lq}(x) - t_q(x)]^2
 \end{displaymath}
 
-where \begin{math}z_{Lq}\end{math} is the output from neuron q in the output layer (layer L).
+where $z_{Lq}$ is the output from neuron q in the output layer (layer L).
 The error gradient for the last layer is given by:
 
 \begin{equation}
-\label{eq:dazzleL}
-\nabla_{z_L}E = \mathbf{z}_{L}(x) - \mathbf{t}
+  \label{eq:dazzleL}
+  \nabla_{z_L}E = \mathbf{z}_{L}(x) - \mathbf{t}
 \end{equation}
 The error gradient for a hidden layer can be calculated recursively according to 
 the equations below.
 (See~\cite[Chapter 2]{hristev_ann_1998} for the derivation.)
 
 \begin{displaymath}
-(\nabla E)_l = [\nabla_{z_l}E \odot f'(a_l)] \cdot z^T_{l-1}
-~~~~~ \textit{for layers }
-l=\overline{1,L}
+  (\nabla E)_l = [\nabla_{z_l}E \odot f'(a_l)] \cdot \mathbf{z}^T_{l-1}
+  ~~~~~ \textit{for layers }
+  l=\overline{1,L}
 \end{displaymath}
 
-\ezy{I think the z above should be bold, since it's a vector.  Also, the paren-subscribe delta notation is a little odd.}
+\ezy{<snip> Also, the paren-subscribe delta notation is a little odd.}
+\amy{This is the notation used in the source I'm referencing. 
+Can you suggest a better notation? I wouldn't want the reader to
+confuse it with $\nabla E_l$ or even $\nabla_{l}E$.}
 
 \begin{equation}
-\label{eq:dazzle}
-\nabla_{z_l}E = W^t_{l+1} \cdot [\nabla_{z_{l+1}}E \odot f'(a_{l+1})]
-~~~~ \textit{calculated recursively from L-1 to 1}
+  \label{eq:dazzle}
+  \nabla_{z_l}E = W^t_{l+1} \cdot [\nabla_{z_{l+1}}E \odot f'(a_{l+1})]
+  ~~~~ \textit{calculated recursively from L-1 to 1}
 \end{equation}
 
-The symbol \begin{math}\odot\end{math} is the \textit{Hadamard}, or element-wise product.
+The symbol $\odot$ is the \textit{Hadamard}, or element-wise product.
 
 
 \subsection{Back-propagating through a single layer}
 
 The result of back-propagation through a single layer is stored in the structure below.
-The expression \begin{math}\nabla_{z_l}E\end{math} is not easily represented in ASCII text,
+The expression $\nabla_{z_l}E$ is not easily represented in ASCII text,
 so the name ``dazzle'' is used in the code.
 
 \begin{code}
-data BackpropagatedLayer
-    = BackpropagatedLayer
-        {
-          -- Del-sub-z-sub-l of E
-          bpDazzle :: ColumnVector Double
-          -- The error due to this layer
-        , bpErrGrad :: Matrix Double
-          -- The value of the first derivative of the activation function function for this layer
-        , bpF'a :: ColumnVector Double
-          -- The input to this layer
-        , bpIn :: ColumnVector Double
-          -- The output from this layer
-        , bpOut :: ColumnVector Double
-          -- The weights for this layer
-        , bpW :: Matrix Double
-          -- The activation specification for this layer
-        , bpAS :: ActivationSpec
-        }
+data BackpropagatedLayer = BackpropagatedLayer
+    {
+      -- Del-sub-z-sub-l of E
+      bpDazzle :: ColumnVector Double,
+      -- The error due to this layer
+      bpErrGrad :: ColumnVector Double,
+      -- The value of the first derivative of the activation 
+      --   function for this layer
+      bpF'a :: ColumnVector Double,
+      -- The input to this layer
+      bpIn :: ColumnVector Double,
+      -- The output from this layer
+      bpOut :: ColumnVector Double,
+      -- The weights for this layer
+      bpW :: Matrix Double,
+      -- The activation specification for this layer
+      bpAS :: ActivationSpec
+    }
 \end{code}
 
 The next step is to define the \verb+backpropagate+ function.
-For hidden layers, we use Equation (\ref{eq:dazzle}).
+For hidden layers, we use Equation (\ref{eq:dazzle}), repeated below.
+
+\begin{equation}
+  \nabla_{z_l}E = W^t_{l+1} \cdot [\nabla_{z_{l+1}}E \odot f'(a_{l+1})]
+  ~~~~ \textit{calculated recursively from L-1 to 1}
+  \tag{\ref{eq:dazzle}}
+\end{equation}
+Since subscripts are not easily represented in ASCII text,
+we use \verb|J| in variable names in place of $_l$, 
+and \verb|K| in place of $_{l+1}$.
+So \verb|dazzleJ| is $\nabla_{z_l}E$,
+\verb|wKT| is $W^t_{l+1}$,
+\verb|dazzleJ| is $\nabla_{z_{l+1}}E$,
+and \verb|f'aK| is $f'(a_{l+1})$.
+Thus, Equation (\ref{eq:dazzle}) is coded as
 
 \begin{code}
-backpropagate
-  :: PropagatedLayer
-  -> BackpropagatedLayer
-  -> BackpropagatedLayer
+dazzleJ = wKT <> (dazzleK * f'aK)
+\end{code}
+
+The operator \verb+*+ appears between
+two column vectors, \verb+dazzleK+ and \verb+f'aK+,
+so it calculates the Hadamard (element-wise) product rather than a scalar product.
+The \verb|backpropagate| function uses this expression,
+and also copies some fields from the original layer (prior to back-propagation).
+
+\begin{code}
+backpropagate :: 
+  PropagatedLayer -> BackpropagatedLayer -> BackpropagatedLayer
 backpropagate layerJ layerK = BackpropagatedLayer
-        {
-          bpDazzle = dazzleJ            
-        , bpErrGrad = errorGrad dazzleJ f'aJ inputJ
-        , bpF'a = pF'a layerJ
-        , bpIn = pIn layerJ
-        , bpOut = pOut layerJ
-        , bpW = pW layerJ
-        , bpAS = pAS layerJ
-        }
-    where dazzleJ = wkT <> (dazzleK * f'aK)
+    {
+      bpDazzle = dazzleJ,
+      bpErrGrad = errorGrad dazzleJ f'aJ (pIn layerJ),
+      bpF'a = pF'a layerJ,
+      bpIn = pIn layerJ,
+      bpOut = pOut layerJ,
+      bpW = pW layerJ,
+      bpAS = pAS layerJ
+    }
+    where dazzleJ = wKT <> (dazzleK * f'aK)
           dazzleK = bpDazzle layerK
-          wkT = trans ( bpW layerK )
-          errK = bpErrGrad layerK
+          wKT = trans ( bpW layerK )
           f'aK = bpF'a layerK
           f'aJ = pF'a layerJ
-          inputJ = pIn layerJ
+
 errorGrad :: ColumnVector Double -> ColumnVector Double -> 
   ColumnVector Double -> Matrix Double
 errorGrad dazzle f'a input = (dazzle * f'a) <> trans input
 \end{code}
 \ezy{The bits where the record is simply inheriting the old values from \verb|layerJ|; at the very least you could reduce line noise by using record update syntax instead of record creation, but also consider if there is an easy way to change the ADT so that these assignments are not necessary.  Also, if you're trying to make the point that Haskell looks a lot like the math which it is computing, it's probably worth recapping the relevant equations near the code so a direct visual comparison can be made (also, avoid temporary variables)}
+\amy{I can't use record update syntax because \verb|layerJ| is of type
+\verb|PropagatedLayer|, while the output is of type \verb|BackpropagatedLayer|.
+Those two types have different fields and different purposes, so I think it
+would be confusing and error-prone to merge them into one type. I did eliminate two temporary variables.}
 
-The function \verb+trans+ calculates the transpose of a matrix.
-The operator \verb+*+ used in the definition of \verb+dazzleJ+ appears between
-two column vectors, \verb+dazzleK+ and \verb+f'aK+,
-so it calculates the Hadamard (element-wise) product rather than a scalar product.
-The final layer uses Equation (\ref{eq:dazzleL}).
+The function \verb+trans+, used in the definition of \verb|wKT|,
+calculates the transpose of a matrix.
+The final layer uses Equation (\ref{eq:dazzleL}), repeated below.
+
+\begin{equation}
+  \nabla_{z_L}E = \mathbf{z}_{L}(x) - \mathbf{t}
+  \tag{\ref{eq:dazzleL}}
+\end{equation}
+In the function \verb|backpropagateFinalLayer|,
+\verb|dazzle| is $\nabla_{z_L}E$.
 
 \begin{code}
-backpropagateFinalLayer
-    :: PropagatedLayer
-    -> ColumnVector Double
-    -> BackpropagatedLayer
+backpropagateFinalLayer ::
+    PropagatedLayer -> ColumnVector Double -> BackpropagatedLayer
 backpropagateFinalLayer l t = BackpropagatedLayer
-        {
-          bpDazzle = dazzle            
-        , bpErrGrad = errorGrad dazzle f'a input 
-        , bpF'a = pF'a l
-        , bpIn = pIn l
-        , bpOut = pOut l
-        , bpW = pW l
-        , bpAS = pAS l
-        }
-        where dazzle =  pOut l - t
-              f'a = pF'a l
-              input = pIn l 
+    {
+      bpDazzle = dazzle,
+      bpErrGrad = errorGrad dazzle f'a (pIn l),
+      bpF'a = pF'a l,
+      bpIn = pIn l,
+      bpOut = pOut l,
+      bpW = pW l,
+      bpAS = pAS l
+    }
+    where dazzle =  pOut l - t
+          f'a = pF'a l
 \end{code}
 
 
@@ -696,41 +770,52 @@ provide a layer of abstraction that is ideally suited to back-propagation.
 
 The definition of the \verb+backpropagateNet+ function is very similar to that of \verb+propagateNet+.
 \begin{code}
-backpropagateNet
-  :: ColumnVector Double
-  -> [PropagatedLayer]
-  -> [BackpropagatedLayer]
-backpropagateNet target layers =
-    scanr backpropagate layerL hiddenLayers
+backpropagateNet :: 
+  ColumnVector Double -> [PropagatedLayer] -> [BackpropagatedLayer]
+backpropagateNet target layers = scanr backpropagate layerL hiddenLayers
   where hiddenLayers = init layers
         layerL = backpropagateFinalLayer (last layers) target
 \end{code}
 \ezy{Ick, not a fan of init and last}
+\amy{What would you suggest in their place?
+I'm probably being a bit thick here, but the only alternatives to 
+init and last that I can think of are splitAt (length xs - 1) xs,
+or doing a reverse, then pattern match on (x:xs), 
+and then doing a reverse on xs.
+I think both of those would be confusing to an audience that is new to
+functional programming.}
 
 \subsection{Updating the weights}
 \label{sec:updateWeights}
 
 After the back-propagation calculations have been performed,
-the weights can be updated using Equation (\ref{eq:weightUpdate}).
+the weights can be updated using Equation (\ref{eq:weightUpdate}),
+which is repeated below.
+
+\begin{equation}
+  W_{new}= W_{old}-\mu\nabla E
+  \tag{\ref{eq:weightUpdate}}
+\end{equation}
+The code is shown below.
 
 \begin{code}
 update :: Double -> BackpropagatedLayer -> Layer
-update rate layer = Layer
-        {
-          lW = wNew 
-        , lAS = bpAS layer
-        }
+update rate layer = Layer { lW = wNew, lAS = bpAS layer }
     where wOld = bpW layer
-          delW = rate .* bpErrGrad layer
+          delW = rate `scale` bpErrGrad layer
           wNew = wOld - delW
 \end{code}
 
-The operator \verb+.*+ performs element-wise multiplication of a matrix by a scalar.
+The parameter name \verb+rate+ is used for the learning rate $\mu$,
+and the local variable \verb+rate+ represents the second term in
+Equation (\ref{eq:weightUpdate}).
+The operator \verb+scale+ performs element-wise multiplication of a matrix by
+a scalar.
 
 \section{A functional approach to testing}
 \label{sec:testing}
 
-In traditional unit testing, the tester writes code to test \ezy{tester--test; awkward} individual cases.
+In traditional unit testing, the code is written to test individual cases.
 For some applications, determining the desired result for each test case can be time-consuming,
 which limits the number of cases that will be tested.
 
@@ -739,9 +824,9 @@ The tester defines properties that should hold for all cases,
 or, at least, for all cases satisfying certain criteria.
 In most cases, QuickCheck can automatically generate suitable pseudo-random test data
 and verify that the properties are satisfied, saving the tester's time.
-In keeping with the test-driven development~\cite{beck-test-driven-2003} methodology,
-these properties could be defined and the tests automated before
-any code is written for the unit under test. \ezy{A little bit of a non-sequitur}
+%In keeping with the test-driven development~\cite{beck-test-driven-2003} methodology,
+%these properties could be defined and the tests automated before
+%any code is written for the unit under test. \ezy{A little bit of a non-sequitur}
 
 QuickCheck can also be invaluable in isolating faults,
 and finding the simplest possible test case that fails.
@@ -749,60 +834,80 @@ This is partially due to the way QuickCheck works: it begins with ``simple'' cas
 (for example, setting numeric values to zero or using zero-length strings and arrays),
 and progresses to more complex cases.
 When a fault is found, it is typically a minimal failing case.
-If the default functions provided by QuickCheck for generating pseudo-random test data are not suitable,
-the tester can write custom functions. \ezy{Note that modern QuickCheck also supports shrinking, which methodically reduces test-cases in an attempt to find a minimal test-case}
+Another feature that helps to find a minimal failing case is ``shrinking''.
+When QuickCheck finds a fault, it simplifies (shrinks) the inputs
+(for example, setting numeric values to zero, or shortening strings and 
+arrays) that lead to the failure, and repeats the test.
+The shrinking process is repeated until the test passes 
+(or until no further shrinking is possible),
+and the simplest failing test is reported.
+If the default functions provided by QuickCheck for generating pseudo-random
+test data or for shrinking data are not suitable,
+the tester can write custom functions.
 
 An in-depth look at QuickCheck is beyond the scope of this article. 
 Instead, we will show one example to illustrate the value of property-based testing.
 What properties should a neural network satisfy, no matter what input data is provided?
-One property it should satisfy is that \ezy{Awkward} if the network is trained once 
+One property is that if the network is trained once 
 with a given input pattern and target pattern
 and immediately run on the same input pattern, the error should be reduced.
-Another way of saying this is that \ezy{Also awkward} training should reduce the error in the output layer, 
+Put another way, training should reduce the error in the output layer, 
 unless the error is negligible to begin with.
-We define the property as follows.
+Since the final layer has a different implementation than the hidden layers,
+we test it separately.
 
-\ezy{You pull a switcheroo here: the desirable property described above is for an entire neural network, but here, only a single layer is being tested. The further down-side of oding this is you need a lot of support code in where to actually setup the test.  (Admittedly, some of this would be helped if you defined some helper functions...)}
-
-\ezy{The function definition here is a little non-standard; actually, you can write the function in the normal curried form; QuickCheck has appropriate typeclass magic to make it all work out. (This also means the \verb|forAll| is not necessary.}
-
-\ezy{Better style when making pipelines of composed functions is to use dots except for the last one, which should be a dollar.  However, if you're writing for not necessarily a Haskell audience (which some parts of the article seemed to imply), then maybe this syntax should be avoided, or at least explained.}
+In order to test this property, we require an input vector, layer, 
+and training vector, all with consistent dimensions.
+We tell QuickCheck how to generate suitable test data as follows:
 
 \begin{code}
--- Property: training reduces error in the final (output) layer
-trainingReducesFinalLayerError :: 
-  (ColumnVector Double, Layer, ColumnVector Double) -> Property
-trainingReducesFinalLayerError (x, l, t) = 
-    classifyRange "len x " n 0 25 $ 
-    classifyRange "len x " n 26 50 $ 
-    classifyRange "len x " n 51 75 $ 
-    classifyRange "len x " n 76 100
-    (errorAfter < errorBefore || errorAfter < 0.01)
+-- A layer with suitable input and target vectors, suitable for testing.
+data LayerTestData = 
+  LTD (ColumnVector Double) Layer (ColumnVector Double)
+    deriving Show
+
+-- Generate a layer with suitable input and target vectors, of the
+-- specified "size", with arbitrary values.
+sizedLayerTestData :: Int -> Gen LayerTestData
+sizedLayerTestData n = do
+    l <- sizedArbLayer n
+    x <- sizedArbColumnVector (inputWidth l)
+    t <- sizedArbColumnVector (outputWidth l)
+    return (LTD x l t)
+
+instance Arbitrary LayerTestData where
+  arbitrary = sized sizedLayerTestData
+\end{code}
+
+The test for the hidden layer is shown below.
+
+\begin{code}
+-- Training reduces error in the final (output) layer
+prop_trainingReducesFinalLayerError :: LayerTestData -> Property
+prop_trainingReducesFinalLayerError (LTD x l t) =
+    -- (collect l) . -- uncomment to view test data
+    (classifyRange "len x " n 0 25) .
+    (classifyRange "len x " n 26 50) . 
+    (classifyRange "len x " n 51 75) . 
+    (classifyRange "len x " n 76 100) $
+    errorAfter < errorBefore || errorAfter < 0.01
         where n = inputWidth l
               pl0 = PropagatedSensorLayer{ pOut=x }
               pl = propagate pl0 l
               bpl = backpropagateFinalLayer pl t
               errorBefore = P.magnitude (t - pOut pl)
-              lNew = update 0.0000000001 bpl -- make sure we don't overshoot the mark
+              lNew = update 0.0000000001 bpl 
+                  -- make sure we don't overshoot the mark
               plNew = propagate pl0 lNew
               errorAfter =  P.magnitude (t - pOut plNew)
-
--- Testable property:
--- Training reduces error in the final (output) layer
-prop_trainingReducesFinalLayerError :: Property
-prop_trainingReducesFinalLayerError =
-    forAll arbLayerTestData trainingReducesFinalLayerError
 \end{code}
 
-\ezy{\verb|arbLayerTestData| may be worth including in the article itself}
-
-The function \verb+trainingReducesFinalLayerError+ takes a tuple consisting of an input pattern \verb+x+,
-an output layer \verb+l+, and a target pattern \verb+t+, and returns a boolean to indicate
-whether or not the property holds.
+The \verb+$+ operator enhances readability of the code by allowing
+us to omit some parenthesis: \verb+f . g . h $ x == (f . g . h) x+.
 This particular property only checks that training works for an output layer;
 our complete implementation tests other properties, including the effect of training on hidden layers.
-The resulting property returns true if the error before training is less than the error after,
-or if the error is already negligible (less than 0.001 for this test). \ezy{Repetitive.}
+%The resulting property returns true if the error before training is less than the error after,
+%or if the error is already negligible (less than 0.001 for this test). \ezy{Repetitive.}
 The \verb+classifyRange+ statements are useful when running the tests interactively;
 they display a brief report indicating the distribution of the test inputs.
 The function \verb+trainingReducesFinalLayerError+ specifies that 
@@ -810,8 +915,8 @@ a custom generator for pseudo-random test data, \verb+arbLayerTestData+,
 is to be used.
 The generator \verb+arbLayerTestData+ ensures that the ``simple'' test cases that QuickCheck starts with
 consist of short patterns and a network with a small total number of neurons.
-We do this so that if there are errors, the first failing test case found
-will be easier to analyze. \ezy{Repetitive.}
+%We do this so that if there are errors, the first failing test case found
+%will be easier to analyze. \ezy{Repetitive.}
 
 We can run the test in \verb+GHCi+, an interactive Haskell REPL.
 
@@ -858,7 +963,7 @@ which take a starting value and a generating function, and produce a list.
 
 Functional programming has some clear advantages for implementing mathematical solutions.
 There is a straightforward relationship between the mathematical equations and the 
-corresponding function definitions. \ezy{See my earlier comment about keeping the equations close to the code}
+corresponding function definitions.
 Note that in the back-propagation example, we merely created data structures
 and wrote definitions for the values we needed.
 At no point did we provide instructions on how to sequence the operations.
@@ -874,8 +979,7 @@ But the greatest advantage of property-based testing may be its ability to isola
 bugs and produce a minimal failing test case.
 It is much easier to investigate a problem when the matrices involved in calculations are small.
 
-Functional programming requires a different mind-set than imperative programming,
-which can lead to a conceptual mismatch. \ezy{Awkward}
+Functional programming requires a different mind-set than imperative programming.
 Textbooks on neural network programming usually provide derivations and definitions,
 but with the ultimate goal of providing an algorithm for each technique discussed.
 The functional programmer needs only the definitions,
@@ -886,11 +990,13 @@ Functional programming may not be suited to everyone, or to every problem.
 However, some of the concepts we have demonstrated can be applied in imperative languages.
 Some imperative languages have borrowed features such as first-class functions, maps, scans and folds 
 from functional languages.
-And some primarily functional languages provide mechanisms for doing object-oriented programming. \ezy{It's worth noting that one such language is OCaml, but many reputable OCaml shops explicitly ban use of the object-oriented mechanisms.}
-Crossover between these two paradigms is beneficial because it provides programmers with more ways to approach problems. \ezy{Is this established by the article?}
+And some primarily functional languages, such as OCaml, provide mechanisms for doing object-oriented programming.
+%Crossover between these two paradigms is beneficial because it provides programmers with more ways to approach problems. \ezy{Is this established by the article?}
 
-\ezy{I'll double-comment: a link to the code would be great here!}
+A complete code listing, along with a sample character recognition application,
+is available online~\cite{deBuitleir-backprop-example}.
 
 \bibliography{deBuitleir}
+
 
 \end{document}
