@@ -368,45 +368,44 @@ matrixR !arr (Parameters !maxElem !t !s !tau !k !l) n m
 
 \subsection{Performance: when to be lazy}
 
-As we already know, Haskell is a non-strict language, where major implementations (for instead GHC)
-use a strategy called call-by-need or laziness to evaluate the code~\cite{Laziness}. 
+As we already know, Haskell is a non-strict language, where major
+implementations (for example, GHC) use a strategy called call-by-need or
+laziness to evaluate the code~\cite{Laziness}.
 
 There is a slight difference between laziness and non-strictness. Non-strict
 semantics refers to a given property of Haskell programs that you can rely on: 
 nothing will be evaluated until it is needed. The way we apply this strategy to 
 our code is by using a mechanism called lazy evaluation. Lazy evaluation is the 
-mechanism used by Haskell to implement non-strictness, using a device called thunk. 
+mechanism used by Haskell to implement non-strictness, using a device called the thunk. 
 
 Laziness can be a useful tool for improving performance on large arrays as one would deploy
-schemes that do not need to evaluate all array members to compute certain matrix operations,
-but in the general case where most matrix values will be taken in account it will 
+schemes that do not need to evaluate all array members to compute certain matrix operations.
+However, in the case where most matrix values will eventually be evaluated, it will 
 reduce performance by adding a constant overhead to everything that needs to be evaluated.
 
-And because of laziness, normally the compiler will not evaluate function arguments and pass 
-the values to the function as in most languages with call-by-value strict semantics, 
-so it will record the expression in the heap in a suspension structure called thunk in case it is 
-evaluated later by the function. 
+Furthermore, due to laziness, function arguments will not always be
+evaluated, so they are instead recorded on the heap as a thunk in case
+they are evaluated later by the function. 
 
 Storing and then evaluating most thunks is costly, and unnecessary in this case, when we know 
-most of the time the complete array of values needs to be fully evaluated. So we will change the
-way some parts of the code behave forcing strictness where we know its better.
+most of the time the complete array of values needs to be fully evaluated. So, instead,
+it is necessary to enforce strictness when we know it is better.
 Optimising compilers like GHC yet try to reduce the cost of laziness using strictness analysis
  ~\cite{Strictness}, which attempts to determine if a function is strict in one or more of 
 its arguments, (which function arguments are always needed to be evaluated before entering the function). 
-Sometimes this leads to better performance where the compiler can hint itself on what is worth to evaluate
-strictly and what is not, but sometimes the programmer knows better what its worth 
-to evaluate beforehand.
+Sometimes this leads to better performance, but sometimes the programmer has better knowledge about what
+is worth evaluating beforehand.
 
 With bang patterns, we can hint the compiler about strictness on any binding form, 
 making the function strict in that variable. In the same way that explicit type annotations can 
 guide type inference, bang patterns can help guide strictness inference. Bang patterns 
-are a language extension, and are enabled with the Bang Patterns language pragma.
+are a language extension, and are enabled with the \textit{BangPatterns} language pragma.
 
-Haskell also has the ability to manage strictness issues using the type system. We took advantage of such 
-capability and defined strictness for some of our data types, thus allowing to force evaluation whenever
- those types are used. You can see that we also used unboxed variants of some the vector library,
+Haskell also has the ability to manage strictness issues when defining records. We took advantage of this
+capability and defined strictness for some of our data types, thus forcing evaluation whenever
+ those data types are used. You can see that we also used unboxed variants of vectors,
 as those types are carefully coded to keep them unboxed most of the time. You can see some of our strict data
-types in Listing 4, following the suggestion given by the repa authors~\cite{bang}.
+types in Listing~4, following the suggestion given by the repa authors~\cite{bang}.
 
 \begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Strict data types for eigenvalue operations]
 
@@ -418,16 +417,14 @@ data EigenData = EigenData {
 
 \end{lstlisting}
 
-So usually (at least while humans still can surpass compiler built-in intelligence) we can decide among several 
-ways to control strictness on certain functions or data structures. we have seen that Haskell has easy ways to do
- this allowing to the programmer to tell the compiler where to be eager 
-about evaluating things. As we have seen before Jacobi's method its a recursive algorithm that
- attempts to converge values below a certain threshold 
-in order to compute the desired {\textbf A\textsuperscript{*}} matrix.
-
-As we are using recursion we keep passing arguments every iteration and we need to ensure those arguments will be evaluated just before 
-we pass them, avoiding to carry thunks along the way. The GHC bang pattern extension allow us to force evaluation on those arguments, as shown
-in Listing 5.
+As we have seen before, Jacobi's method its a recursive algorithm that
+attempts to converge values below a certain threshold in order to
+compute the desired {\textbf A\textsuperscript{*}} matrix.  As we are
+using recursion we keep passing arguments every iteration and we need to
+ensure those arguments will be evaluated just before we pass them,
+avoiding to carry thunks along the way. These arguments must be forced,
+as shown in Listing~5. The hope is that the conjunction of strict values
+and tight loops will guide the compiler on the way of generating unboxed values as much as it is desired.
 
 \begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Jacobi strict argument passing]
 jacobi !arrA !arrP step tol
@@ -440,32 +437,25 @@ jacobi !arrA !arrP step tol
 ...
 \end{lstlisting}
 
-Generally, in the implementation of laziness the thunk is really just a pointer to a piece of (usually static) code, plus another pointer 
-to the data the code should work on. If the entity computed by the thunk is larger than the pointer to the code and the associated 
-data, then the thunk wins out in memory usage. But if the entity computed by the thunk is smaller, build the thunk ends up using 
-more memory that trying to evaluate the value eagerly.
-
-So we are going to force values to avoid those costly thunks while we manage to rotate our arrays, 
-converting them to strict forms ensuring that those operations are carried out before we use the results,
-and also in the spirit of the previously repa works we hope the conjunction of strict values 
-and tight loops will guide the compiler on the way of generating unboxed values as much as it is desired.
-
 \subsection{Performance: Exploiting muti-core}
 
-Ab-initio electronic structure methods like Hartree-Fock, as we will see,
- have the advantage to give accurate solutions, if the approximations 
-are sufficiently small in magnitude. The downside of ab-initio methods
- is their computational cost. They often take enormous amount of time, 
-memory and disk for describing the electrons, as we will see in the next section. The HF method scales nominally 
-as {\textbf N\textsuperscript{4}}, with N being the number of electrons in the system. 
+Ab-initio methods like Hartree-Fock have the advantage of giving accurate solutions if the approximations 
+are sufficiently small in magnitude.
+%
+The downside of ab-initio methods is their computational cost.
+% 
+They often take enormous amount of time, 
+memory and disk to describe electrons, as we will see in the next section.
+%
+The HF method scales with {\textbf N\textsuperscript{4}}, with N being
+the number of electrons in the system.
 
-
-However in practice it can scale closer to {\textbf N\textsuperscript{3}} using heuristics,
-for instance some of the integrals that will be introduced in next sections are zero or extremely
-small and they are identified and neglect before the evaluation. Therefore we can employ this and some other
-schemes to alleviate costs through simplification of some multi-index integrals that reduce electronic densities. 
-Some of this techniques means diverse trade-off, but can sharply reduce the effective molecular size
-in term of cost, a major problem in the treatment of biologically-sized molecules.
+However, in practice, it can scale closer to {\textbf N\textsuperscript{3}} using heuristics;
+for example, some of the integrals that will be introduced in next sections are zero or extremely
+small. These can be identified and then skipped before they are evaluated. These and other
+heuristics help simplify the multi-index integrals involved in computing electron densities.
+These techniques have complex trade-offs, and reducing the cost of these computations
+is a major problem in the treatment of biologically-sized molecules.
 
 Despite the many methods that one can depict to alleviate complexity,
  we must in first term try to squeeze the most computing power out of our machines
