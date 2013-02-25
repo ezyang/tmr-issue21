@@ -316,24 +316,33 @@ matrixA !arr (Parameters !maxElem !t !s !tau !k !l) n m
                    
 \end{lstlisting}
 
-In Listing~2 is shown the implementation of \textit{rotateA}. The key for the rotation
-implementation is the \textit{fromFunction} function which is included in the 
-repa library and has the following signature 
+Listing~2 contains the implementation of \textit{rotateA}.
+%
+The key piece of the rotation implementation is the
+\textit{fromFunction} function, which is included in the repa library
+and has the following signature 
 \textit{fromFunction :: sh -> (sh -> a) -> Array D sh a}.
-This useful function tell us that if we want to create an array of a given shape,
-we must provide a function that takes an index as argument representing the entries of
-the new array, and with it calculate a numerical value somehow,
-generating a delay array that can be evaluated in parallel using the \textit{computeUnboxedP} function.
-Therefore, an anonymous lambda function has been created that first retrieves the entry with index sh 
-of the matrix to be diagonalized. Taking advance of the symmetric properties of the matrix, we can 
-rotate only the upper triangular matrix and leave the rest of the elements untouched. Therefore, we pass
-to rotateA the function \textit{matrixA} partially applied, this last function takes the indexes \textit{m}
-and \textit{n} for the upper triangular matrix and generates the numerical values using equations 
-\eqref{1} to \eqref{5}, leaving the values below the diagonal untouched.
+%
+This function creates an array of a given shape from a function that
+takes as an argument an index of an entry in the new array, and
+calculates the numerical value for that entry.
+%
+The result is a ``delayed'' array which can be evaluated in parallel
+using the \textit{computeUnboxedP} function.
+%
+Taking advantage of the symmetric properties of the matrix, we can
+rotate only the upper triangular matrix and leave the rest of the elements untouched.
+%
+Therefore, we pass to \textit{rotateA} a partially applied
+\textit{matrixA}, which takes the indexes \textit{m} and \textit{n} for
+an upper triangular matrix and generates the numerical values using
+equations \eqref{1} to \eqref{5}, leaving the values below the diagonal
+untouched.
 
-The implementation of \textit{rotateR} only differs from the previous one, in that
-equations \eqref{6} and \eqref{7} are used to calculate the numerical values and
-that the whole matrix is rotated not only the triangular part, as depicted in Listing 3.
+The implementation of \textit{rotateR} only differs from the previous
+one, in that equations \eqref{6} and \eqref{7} are used to calculate the
+numerical values and that the whole matrix is rotated not only the
+triangular part, as depicted in Listing~3.
 
 \begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= rotateR function]
 rotateR :: (Monad m ,VU.Unbox Double) =>
