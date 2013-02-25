@@ -25,31 +25,31 @@
 
 \begin{introduction}
 
-Scientific computing is a transversal subject where professionals of several 
-fields join forces to get answers about the behaviour of Nature
-using a variety of models. In the development of this area
-FORTRAN has been the king for many years, but it is time to stop the 
-tyrannical reign. It has been years of the same awful programming style, but now
-it is time to use a language which offers a high level of abstraction 
-making the translation of equations to code straightforward, while adding
-conciseness and flexibility. Besides, introducing parallelism and 
-concurrency is of primary importance in modelling, but the lack of the modularity 
-and the appropriate tools for doing it in 
-the commonly used languages and methodologies, makes the most simple of
-the parallel tasks a real nightmare. Haskell is the language of choice
-basically because the abstraction levels supported 
-lead to a brief, elegant and efficient code. In this article, we will  
-begin discussing the implementation of a simple method for calculating
-all eigenvalues and eigenvectors of a symmetric matrix, then we will 
-describe a minimal but complete Haskell methodology, for the procedure known as 
-the Hartree-Fock method, which is widely used in computational quantum chemistry and
-physics for calculating recursively the eigenvalues of a mathematical entity
-which represent the quantized levels of energy of a molecule, while the eigenvectors make up
-the so called wave function, discussed in the article.
- Do not be afraid about 
-the name of it, most of the technical details are skipped while we will focus mainly
-in the Haskell programming details.
- 
+Scientific computing is a transversal subject where professionals of
+many fields join forces to answer questions about the behaviour of
+Nature using a variety of models.
+%
+In this area, Fortran has been king for many years.
+%
+It is now time to end Fortran's tyrannical reign!
+%
+It is time to use a language which offers a high level of abstraction; a
+language which allows a straightforward translation of equations to code.
+%
+It is time to use a language which has appropriate tools for parallelism
+and concurrency.
+%
+Haskell is our language of choice: its levels of abstraction lead to a
+brief, elegant and efficient code.
+%
+In this article, we will describe a minimal but complete Haskell
+implementation of the Hartree-Fock method, which is widely used in
+quantum chemistry and physics for recursively calculating the
+eigenvalues of the quantized levels of energy of a molecule and the
+eigenvectors of the wave function.
+%
+Do not be afraid about the formidable name; we will skip most of the
+technical details and focus on the Haskell programming.
 
 \end{introduction}
 
@@ -59,11 +59,11 @@ in the Haskell programming details.
 Haskell and the theory behind it has made us 
 ask ourself some irresistible questions like: have those equations written in the
 piece of paper the same mathematical meaning of those that we 
-have implemented in FORTRAN? If programming is as much of mathematical
+have implemented in Fortran? If programming is as much of mathematical
 foundation as it is of artistic creation, then why are we still working
 with such twisted and ugly ideas? Then you ask the same questions to workmates
 and professors, and after while working locked in your
-office, you will find out that an angry mob of FORTRAN programmers is waiting outside
+office, you will find out that an angry mob of Fortran programmers is waiting outside
  because you dared to say that a pure and lazy functional language is the future of 
 programming in science!. 
 
@@ -444,12 +444,12 @@ minimise the overhead of index-space transformions, that are one of the most
 common operations. Delayed arrays are represented by a function from indices 
 to array elements as we have seen before, in contrast with manifest arrays
 which are represented as contiguous blocks of unboxed values that other 
-languages like FORTRAN traverse all the time. 
+languages like Fortran traverse all the time. 
 
 Fusion of operations on delayed arrays amounts to function composition, and 
 can dramatically save lot of computational cost while being easy to manage. 
 Delayed arrays can conveniently forced into manifest ones within repa by means 
-of a loop. In a FORTRAN or C program, the programmer writes explicit loops. 
+of a loop. In a Fortran or C program, the programmer writes explicit loops. 
 In Repa, the programmer never writes loops; the loops are in library functions.
 
 Moreover, Repa also introduced a more advanced array layout with delayed or manifest 
@@ -515,7 +515,7 @@ the best language available at those times. The incredible thing is that the sci
 this day, neither wanted nor understood the possibilities of changing the algorithms to 
 more powerful and expressive language, arguing the giant cost both in investment and programming time. Therefore 
 there is still an irrational and cruel practice spread in many universities for punishing Ph.D. students
-in physical and chemical departments, consisting in debugging thousand of lines of code in FORTRAN 77,
+in physical and chemical departments, consisting in debugging thousand of lines of code in Fortran 77,
 bad written and worse documented. Not because many people have spoken about how to implement
 these things, nor because is written in many books or have been taught 
 for many generations, it means that it is the only and best way of programming scientific code.
@@ -1236,7 +1236,7 @@ The set of modules making up the Hartree-Fock method, which will
 become a package in a near future, are not a real competition
 for the electronic structure package found either in the market
 or in the academic community like these ones: (most of them
-written in FORTRAN)~\cite{software},
+written in Fortran)~\cite{software},
 but as far as we know it is the first one implemented in a 
 functional language. But unlike, the politics of one of the 
 most famous software in computational quantum chemistry, we
@@ -1249,7 +1249,7 @@ lands, full of opportunities for applying the high abstraction level
 of Haskell to the challenge of simulating the natural phenomena. And
 Remember \textit{Just Fun ...or Nothing}. 
 
-\[\mathbf{BEWARE\;FORTRANIANS!!!} \]
+\[\mathbf{BEWARE\;FortranIANS!!!} \]
 
 
 \[\mathbf{\hat{H}askell\: \Psi >>= \setminus E\: -> \Psi\: E }\]
