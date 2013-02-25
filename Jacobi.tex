@@ -56,34 +56,44 @@ technical details and focus on the Haskell programming.
 
 \section{Joining two worlds}
 
-Haskell and the theory behind it has made us 
-ask ourself some irresistible questions like: have those equations written in the
-piece of paper the same mathematical meaning of those that we 
-have implemented in Fortran? If programming is as much of mathematical
-foundation as it is of artistic creation, then why are we still working
-with such twisted and ugly ideas? Then you ask the same questions to workmates
-and professors, and after while working locked in your
-office, you will find out that an angry mob of Fortran programmers is waiting outside
- because you dared to say that a pure and lazy functional language is the future of 
-programming in science!. 
+Haskell and its underlying theory have made us ask ourself some
+irresistible questions: have those equations written in the piece of
+paper the same mathematical meaning of those that we have implemented in
+Fortran?
+%
+If programming is as much mathematical as it is artistic creation, then
+why are we still working with such twisted and ugly ideas?
+%
+You ask the same questions to your workmates and professors, and after
+while working locked in your office, you will find out that an angry mob
+of Fortran programmers is waiting outside.
+%
+After all, you dared to say that a pure and lazy functional language is
+the future of programming in science!
 
-Waiting that they get into the office, we will first describe 
-the Jacobi algorithm for calculating the eigenvalues
-and eigenvectors of a symmetric square matrix using the repa 
-library. Then, equipped with this useful recursive function 
-we will see some basic details of the Hartree-Fock methodology and
-the self consistent field (SCF) procedure for computing iteratively the eigenvalues
-and eigenvectors of a molecular system and how we can implement
-it in Haskell. In doing so, we will try to connect the simulation ideas with 
+While waiting for the mob to get into our office, we will describe the
+Jacobi algorithm for calculating the eigenvalues and eigenvectors of a
+symmetric square matrix using the repa library.
+%
+Then, equipped with this useful recursive function, we will see some
+basic details of the Hartree-Fock methodology and the self-consistent
+field (SCF) procedure for iteratively computing the eigenvalues and
+eigenvectors of a molecular system.
+%
+In doing so, we will try to connect the simulation ideas with 
 the powerful abstraction system of Haskell.
-\par Moreover, there is an excellent collection of modules written by 
-Jan Skibinski for quantum mechanics and mathematics, but the approach used
+%
+We note that there is an excellent collection of modules written by Jan
+Skibinski for quantum mechanics and mathematics, but the approach used
 in those modules is different from ours~\cite{Skibinski}.
 
 
 \section{The Jacobi Algorithm}
-The Jacobi Algorithm is a recursive procedure for calculating all eigenvalues
-and eigenvectors of a symmetric matrix. If you have forgotten about the eigenvalue problem,
+
+The Jacobi Algorithm is a recursive procedure for calculating all
+eigenvalues and eigenvectors of a symmetric matrix.
+%
+If you have forgotten about the eigenvalue problem,
  have a look at this~\cite{eigenvalue}. Given the standard matrix eigenvalue problem 
 (the \textlambda\ is a diagonal matrix containing the eigenvalues and it is not a function
 abstraction)
