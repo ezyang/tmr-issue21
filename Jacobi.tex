@@ -90,29 +90,39 @@ in those modules is different from ours~\cite{Skibinski}.
 
 \section{The Jacobi Algorithm}
 
-The Jacobi Algorithm is a recursive procedure for calculating all
+The Jacobi Algorithm is a recursive procedure for calculating all of the
 eigenvalues and eigenvectors of a symmetric matrix.
 %
-If you have forgotten about the eigenvalue problem,
- have a look at this~\cite{eigenvalue}. Given the standard matrix eigenvalue problem 
-(the \textlambda\ is a diagonal matrix containing the eigenvalues and it is not a function
-abstraction)
+We briefly describe the eigenvalue problem; for a more detailed
+treatment, see~\cite{eigenvalue}.
+%
+The standard matrix eigenvalue problem seeks to find matrices $x$ and $\lambda$
+such that:
 
 \[\mathbf{Ax} = \lambda \mathbf{x}  \]
-the Jacobi algorithm is based on applying a transformation of the form 
- \[\mathbf{A^*x^*} = \lambda \mathbf{x^*}  \]
-Where
+
+(The \textlambda\ is a diagonal matrix of the eigenvalues; not a
+function abstraction!)
+%
+The Jacobi algorithm is based on applying a transformation of the form
+
+\[\mathbf{A^*x^*} = \lambda \mathbf{x^*}  \]
+
+where
+
 \[\mathbf{x^*} = \mathbf{Rx} \]
 \[\mathbf{A^*} = \mathbf{R^TAR} \]
-The transformation is applied to the standard eigenvalue problem
-in such a way that a similar expression is obtained whose 
-eigenvalues and eigenvectors are the same but the
-new expression {\textbf A\textsuperscript{*}} is diagonal. The matrix {\bf R} 
-is called the Jacobi rotation matrix~\cite{Jacobi},
-which is a orthogonal matrix (therefore {\textbf R\textsuperscript{-1}}= {\textbf R\textsuperscript{T}} the
-inverse is equal to the transpose matrix) with all the entries of the matrix equal
- to zero but the diagonal and two off-diagonal elements
-in the positions kl and lk of the matrix, as show below.
+
+The transformation is applied to the original problem in such a way that
+the new expression obtained has the same eigenvalues and eigenvectors,
+but contains a matrix {\textbf A\textsuperscript{*}} which is diagonal.
+%
+The matrix {\bf R} is called the Jacobi rotation matrix~\cite{Jacobi},
+which is an orthogonal matrix ({\textbf R\textsuperscript{-1}}= {\textbf
+R\textsuperscript{T}}, i.e. the inverse is equal to the transpose) with
+all the entries of the matrix equal to zero except for the diagonal and
+two off-diagonal elements in the positions $kl$ and $lk$ of the matrix,
+as shown below.
 
 \[
  \mathbf{R} =
@@ -126,15 +136,22 @@ in the positions kl and lk of the matrix, as show below.
 \end{pmatrix}
 \]
 
- When the similar transformation is applied over the matrix
-{\textbf A}, the off diagonal elements of the new matrix {\textbf A\textsuperscript{*}} are equal
+When a similar transformation is applied over the matrix
+{\textbf A}, the off-diagonal elements of the new matrix {\textbf A\textsuperscript{*}} are equal
 to zero, meaning that 
 {A\textsuperscript{*}\textsubscript{kl}} = {A\textsuperscript{*}\textsubscript{lk}} = 0.
-\par The Idea of the algorithm is to find the largest off-diagonal element of the matrix \textbf{A},
- apply the rotation involving the row and column of the largest element and save the rotation matrix \textbf{R}. 
-Then, rotations are applied until all the off-diagonal elements are lower than a delta.
-The application of the Rotation Matrix \textbf{R} over the matrix \textbf{A} produces
-the new matrix {\textbf A\textsuperscript{*}} which elements are given by
+
+The idea of the algorithm is to find the largest off-diagonal element of
+the matrix \textbf{A}, apply a rotation involving the row and column of
+the largest element and save the rotation matrix \textbf{R}.
+%
+The rotations are applied until all the off-diagonal elements are lower
+than a delta.
+%
+The application of the rotation matrix \textbf{R} over the matrix
+\textbf{A} produces the new matrix {\textbf A\textsuperscript{*}}, whose
+elements are given by
+
 \begin{equation}\label{1} A^{*}_{kk} = A_{kk}  -  t A_{kl} \end{equation}
 \begin{equation}\label{2} A^{*}_{ll} = A_{ll} +   t A_{kl} \end{equation}
 \begin{equation}\label{3} A^{*}_{kl} =A^{*}_{lk} = 0       \end{equation}
@@ -145,23 +162,30 @@ A^{*}_{kj} =A^{*}_{jk} = A^{*}_{kj} - s (A_{lj} + \tau A_{kj}), j \not = k \wedg
 A^{*}_{lj} =A^{*}_{jl} = A^{*}_{lj} + s (A_{kj} - \tau A_{lj}), j \not = k \wedge j \not = l 
 \end{equation}
 
-where s, t and \texttau\ are functions of A\textsubscript{kl}.
+where $s$, $t$ and $\tau$ are functions of A\textsubscript{kl}.
 
-\par Finally the eigenvalues are the diagonal elements of the final \textbf{A\textsuperscript{*}}
- and the eigenvectors {\bf EV} 
-are columns of the matrix productory over all the Jacobi rotation matrices.
+Once all the rotations are applied, the eigenvalues are the diagonal
+elements of the final \textbf{A\textsuperscript{*}} and the eigenvectors
+{\bf EV} are columns of the matrix product over all the Jacobi rotation
+matrices.
+%
 \[ \mathbf{EV} = \prod_{i=1} \mathbf{R}_i \]
-Because of the sparse form of the rotation matrix the partial productory can 
-be calculated in each rotation step easily through the following transformation,
+%
+Because the rotation matrices are sparse, a partial product can be
+calculated in each rotation step through the following transformation,
+%
 \begin{equation}\label{6} R^{*}_{jk} = R_{ik}  -  s (R_{jl} + \tau R_{jk}) \end{equation}
 \begin{equation}\label{7} R^{*}_{jl} = R_{il}  +  s (R_{jk} - \tau R_{jl}) \end{equation}
-where {\textbf R\textsuperscript{*}} denotes the partial productory matrix.
+%
+where {\textbf R\textsuperscript{*}} denotes the partial product matrix.
 
-\section{Haskell Implementation} 
-The Repa library offers a novel and efficient
-way of doing operations over arrays, therefore the data structures
-and the functions of this library will be the basis for our 
-implementation. You can find a repa tutorial here~\cite{repa}.
+\section{Haskell Implementation}
+
+The repa library offers efficient operations over arrays; the data
+structures and the functions of this library will be the basis for our
+implementation.
+%
+You can find a repa tutorial here~\cite{repa}.
 
 \begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Jacobi Method]
 import Data.Array.Repa  as R
@@ -207,35 +231,56 @@ jacobi !arrA !arrP step tol
         toval (i,j) = arrA ! (Z:. i :. j)
 \end{lstlisting}
 
-Since the matrix is a symmetric one, we can either work with the upper or lower
-triangular matrix. Then a repa unidimensional unboxed array or a bidimensional array
- duplicating the data are suitable choices to represent our matrix. 
+Since the matrix is symmetric, we can work with either the upper or
+lower triangular matrix.
+%
+Then both repa unidimensional unboxed arrays and bidimensional arrays
+duplicating the data are suitable choices to represent our matrix.
+%
 We have chosen the bidimensional representation.
 
-The main function of the Jacobi has the signature depicted in Listing 1, where the Jacobi function takes as
-input a bidimensional array representing the symmetric matrix {\textbf A}, a bidimensional
-array for the rotational matrix {\textbf R}, the current iteration (an integer),
-the numerical tolerance which is a synonym for a double and
-finally the function returns an algebraic data type containing the eigenvalues
-and eigenvectors, represented as a unboxed vector and a repa bidimensional matrix, respectively.
-The \textit{jacobiP} function is the driver to initialize the rotation procedure, using
-the identity matrix as initial value of the matrix \textbf{R}. 
+The main function has the signature depicted in Listing~1,
+where the Jacobi function takes as input a bidimensional array
+representing the symmetric matrix {\textbf A}, a bidimensional array for
+the rotational matrix {\textbf R}, the current iteration (an integer) and
+the numerical tolerance (which is just a synonym for a double).
+%
+The function returns an algebraic data type containing the eigenvalues
+and eigenvectors, represented as a unboxed vector and a repa
+bidimensional matrix, respectively.
+%
+The \textit{jacobiP} function is the driver to initialize the rotation
+procedure, using the identity matrix as the initial value of the matrix
+\textbf{R}.
 
-The first guard in the Jacobi function takes care of the maximum number of rotations allowed
-to the function, where \textit{dim} is the number of rows (or columns) of the symmetric matrix.
-The second guard first checks that the greatest off-diagonal element of the symmetric
-matrix is larger than the tolerance. If the matrix is considered diagonalized, then the 
-EigenData value Constructor saves the eigenvalues contained in the diagonal of the symmetric
-matrix called \textit{arrA} and the final rotation matrix contained in \textit{arrP}.
+The first guard in the Jacobi function takes care of the maximum number
+of rotations allowed, where \textit{dim} is the number of rows (or
+columns) of the symmetric matrix.
+%
+The second guard checks that the greatest off-diagonal element of the
+symmetric matrix is larger than the tolerance.
+%
+If it is not, then the matrix is considered diagonalized and we return
+an \textit{EigenData} value containing the eigenvalues in the diagonal of
+the symmetric matrix \textit{arrA} and the final rotation matrix
+contained in \textit{arrP}.
 
-The parallel computation of the arrays in repa is abstracted using a generic 
-monad \textit{m}, as stated in the signature of the Jacobi Function,
-therefore \textit{rotateA} and \textit{rotateR} are monadic functions. Taking
-advantage of the syntactic sugar we extract the two new rotated matrices \textit{arr1} and
-\textit{arr2} and bind them to a new call of the Jacobi function.
-For calculating the \textit{k} and \textit{l} indexes, the \textit{maxElemIndex} function
-finds the largest index of the bidimensional array. Finally, the \textit{parameters} functions
-compute an algebraic data type containing the numerical parameters required for the rotation functions. 
+Parallel computation on arrays in repa is abstracted using a
+generic monad \textit{m}, as stated in the signature of the Jacobi
+function; therefore, \textit{rotateA} and \textit{rotateR} are monadic
+functions.
+%
+Taking advantage of syntactic sugar, we extract the two new rotated
+matrices \textit{arr1} and \textit{arr2} and bind them to a new call of
+the Jacobi function.
+%
+For calculating the \textit{k} and \textit{l} indexes, the
+\textit{maxElemIndex} function finds the largest index of the
+bidimensional array.
+%
+Finally, the \textit{parameters} functions compute an algebraic data
+type containing the numerical parameters required for the rotation
+functions.
 
 \begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= rotateA function]
 rotateA :: (Monad m ,VU.Unbox Double) =>
@@ -270,7 +315,8 @@ matrixA !arr (Parameters !maxElem !t !s !tau !k !l) n m
         toval (i,j) = arr ! (Z :. i:. j)
                    
 \end{lstlisting}
-In Listing 2 is shown the implementation of \textit{rotateA}. The key for the rotation
+
+In Listing~2 is shown the implementation of \textit{rotateA}. The key for the rotation
 implementation is the \textit{fromFunction} function which is included in the 
 repa library and has the following signature 
 \textit{fromFunction :: sh -> (sh -> a) -> Array D sh a}.
