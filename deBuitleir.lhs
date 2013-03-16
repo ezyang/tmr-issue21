@@ -143,9 +143,9 @@ In Haskell, the \verb+type+ keyword defines an alternative name for an existing 
 it does not define a new type. 
 (A complete code listing, along with a sample character recognition application,
 is available online~\cite{deBuitleir-backprop-example}.)
-\begin{code}
+\begin{verbatim}
 type ColumnVector a = Matrix a
-\end{code}
+\end{verbatim}
 
 The activation function is the final element needed to represent the neuron.
 Here, we encounter one of the advantages of a functional approach.
@@ -163,20 +163,21 @@ and its first derivative.
 (The back-propagation algorithm requires that the activation function be differentiable,
 and we will need the derivative to apply the back-propagation method.)
 This helps to reduce the chance that the user will change the activation function 
-and forget to change the derivative. \ezy{Rhetorical question: why can't the derivative be computed automatically?}
-\amy{Do you mean why can't we just use ${\Delta f}/{\Delta y}$ rather than ${df}/{dy}$?
-I don't know!}
+and forget to change the derivative.
+%\ezy{Rhetorical question: why can't the derivative be computed automatically?}
+%\amy{Do you mean why can't we just use ${\Delta f}/{\Delta y}$ rather than ${df}/{dy}$?
+%I don't know!}
 We define this type using Haskell's record syntax,
 and include a string to describe the activation function being used.
 
-\begin{code}
+\begin{verbatim}
 data ActivationSpec = ActivationSpec
     {
       asF :: Double -> Double,
       asF' :: Double -> Double,
       desc :: String
     }
-\end{code}
+\end{verbatim}
 
 The first field, \verb+asF+, is the activation function, which takes a \verb+Double+
 (double precision, real floating-point value) 
@@ -195,14 +196,14 @@ As an example of how to create a value of the type \verb+ActivationSpec+,
 here is one for the identity function $f(x) = x$, 
 whose first derivative is $f'(x) = 1$.
 
-\begin{code}
+\begin{verbatim}
 identityAS = ActivationSpec
     {
       asF = id,
       asF' = const 1,
       desc = "identity"
     }
-\end{code}
+\end{verbatim}
 
 The function \verb+id+ is Haskell's predefined identity function.
 The definition of \verb+asF'+ may seem puzzling.
@@ -222,7 +223,7 @@ So the expression \verb+const 1+ can satisfy the type signature \verb+Double -> 
 The hyperbolic tangent is a commonly-used activation function;
 the appropriate \verb+ActivationSpec+ is defined below.
  
-\begin{code}
+\begin{verbatim}
 tanhAS :: ActivationSpec
 tanhAS = ActivationSpec
     {
@@ -232,7 +233,7 @@ tanhAS = ActivationSpec
     }
 
 tanh' x = 1 - (tanh x)^2
-\end{code} % Note to EZY: figure out why caret is being rendered funny
+\end{verbatim} % Note to EZY: figure out why caret is being rendered funny
 
 At this point, we have taken advantage of Haskell's support for \emph{first-class functions} to
 store functions in a record structure and to pass functions as parameters to
@@ -246,13 +247,13 @@ The weights are stored in an $n \times m$ matrix,
 where $n$ is the number of inputs and $m$ is the number of neurons.
 The number of outputs from the layer is equal to the number of neurons, $m$.
 
-\begin{code}
+\begin{verbatim}
 data Layer = Layer
     {
       lW :: Matrix Double,
       lAS :: ActivationSpec
     }
-\end{code}
+\end{verbatim}
 
 The weight matrix, \verb+lW+, has type \verb+Matrix Double+.
 This is a matrix whose element values are double-precision floats.
@@ -268,13 +269,13 @@ the \verb+Layer+ constructor.
 The network consists of a list of layers and a parameter to control the rate at which the network 
 learns new patterns.
 
-\begin{code}
+\begin{verbatim}
 data BackpropNet = BackpropNet
     {
       layers :: [Layer],
       learningRate :: Double
     }
-\end{code}
+\end{verbatim}
 
 The notation \verb+[Layer]+ indicates a list whose elements are of type \verb+Layer+.
 Of course, the number of outputs from one layer must match the number of inputs to the next layer.
@@ -284,13 +285,13 @@ First, we address the problem of how to verify that the dimensions of
 a consecutive pair of network layers is compatible.
 The following function will report an error if a mismatch is detected.
 
-\begin{code}
+\begin{verbatim}
 checkDimensions :: Matrix Double -> Matrix Double -> Matrix Double
 checkDimensions w1 w2 =
   if rows w1 == cols w2
        then w2
        else error "Inconsistent dimensions in weight matrix"
-\end{code}
+\end{verbatim}
 
 Assuming that no errors are found, \verb+checkDimensions+ simply
 returns the second layer in a pair.
@@ -304,29 +305,29 @@ However, there is a more straightforward solution using an operation called a \t
 There are several variations on this operation, 
 and it can proceed either from left to right, or from right to left.
 We've chosen the predefined operation \verb+scanl1+, read ``scan-ell-one'' (not ``scan-eleven'').
-\begin{code}
+\begin{verbatim}
 scanl1 f [x1, x2, x3, ...] == [x1, f x1 x2, f (f x1 x2) x3, ...]
-\end{code}
+\end{verbatim}
 
 The l indicates that the scan starts from the left, 
 and the 1 indicates that we want the variant that takes no starting value.
 Applying \verb+scanl1 checkDimensions+ to a list of weight matrices gives the following result
 (again assuming no errors are found).
 
-\begin{code}
+\begin{verbatim}
 scanl1 checkDimensions [w1, w2, w3, ...] 
   == [w1, checkDimensions w1 w2, 
          checkDimensions (checkDimensions w1 w2) w3, ...]
-\end{code}
+\end{verbatim}
 
 If no errors are found, then \verb+checkDimensions+ returns the second layer
 of each pair, so:
 
-\begin{code}
+\begin{verbatim}
 scanl1 checkDimensions [w1, w2, w3, ...] 
   == [w1, checkDimensions w1 w2, checkDimensions w2 w3, ...]
   == [w1, w2, w3, ...]
-\end{code}
+\end{verbatim}
 
 Therefore, if the dimensions of the weight matrices are consistent, this operation
 simply returns the list of matrices, e.g. it is the identity function.
@@ -340,58 +341,58 @@ to the corresponding element in the list of weight matrices.
 The definition of \verb+buildLayer+ is simple, it merely invokes the constructor for the type
 \verb+Layer+, defined earlier.
 
-\begin{code}
+\begin{verbatim}
 buildLayer w = Layer { lW=w, lAS=s }
-\end{code}
+\end{verbatim}
 
 Using the operations discussed above, we can now define the constructor function, \verb+buildBackpropNet+.
 
-\begin{code}
+\begin{verbatim}
 buildBackpropNet :: 
   Double -> [Matrix Double] ->  ActivationSpec -> BackpropNet
 buildBackpropNet lr ws s = BackpropNet { layers=ls, learningRate=lr }
   where checkedWeights = scanl1 checkDimensions ws
         ls = map buildLayer checkedWeights
         buildLayer w = Layer { lW=w, lAS=s }
-\end{code}
+\end{verbatim}
 
-\ezy{This code needs some seqs: the entire list should be bottom on a failed
-checkDimension, not just the failed layer}
-\amy{
-Although it's not as efficient, the way I did it has the advantage of being 
-simple, while providing an error message that indicates where the inconsistency
-occurs. For example, \verb|show badNet| gives something like:
-\begin{verbatim}
-BackpropNet {layers = [w=(2><3)
- [ 3.4768131213769315e-2, 2.8801478944654235e-2, 0.45180900343559594
- ,    0.4848721235878627,    0.8912643942896993,  0.8987028229229337 ], 
- activation spec=identity,w=(3><2)
- [ 3.4768131213769315e-2, 2.8801478944654235e-2
- ,   0.45180900343559594,    0.4848721235878627
- ,    0.8912643942896993,    0.8987028229229337 ], 
- activation spec=identity,w=(2><3)
- [ 3.4768131213769315e-2, 2.8801478944654235e-2, 0.45180900343559594
- ,    0.4848721235878627,    0.8912643942896993,  0.8987028229229337 ], 
- activation spec=identity,w=(*** Exception: Inconsistent dimensions in 
- weight matrix
-\end{verbatim}
-So the user can tell that layer 3 is inconsistent with layer 2.
-I did create an alternative:
-\begin{code}
-buildBackpropNet lr ws s = approvedWeights `deepseq` 
-    BackpropNet { layers=ls, learningRate=lr }
-  where checkedWeights = scanl1 checkDimensions ws
-        ls = map buildLayer checkedWeights
-        buildLayer w = Layer { lW=w, lAS=s }
-        approvedWeights = concatMap toList (map flatten checkedWeights)
-\end{code}
-But of course then the error message is less useful:
-\begin{verbatim}
-*** Exception: Inconsistent dimensions in weight matrix
-\end{verbatim}
-And modifying that code to say which layer the occurred at makes
-things more complex than I think a Haskell beginner is really ready for.
-}
+%   \ezy{This code needs some seqs: the entire list should be bottom on a failed
+%   checkDimension, not just the failed layer}
+%   \amy{
+%   Although it's not as efficient, the way I did it has the advantage of being 
+%   simple, while providing an error message that indicates where the inconsistency
+%   occurs. For example, \verb|show badNet| gives something like:
+%   \begin{verbatim}
+%   BackpropNet {layers = [w=(2><3)
+%    [ 3.4768131213769315e-2, 2.8801478944654235e-2, 0.45180900343559594
+%    ,    0.4848721235878627,    0.8912643942896993,  0.8987028229229337 ], 
+%    activation spec=identity,w=(3><2)
+%    [ 3.4768131213769315e-2, 2.8801478944654235e-2
+%    ,   0.45180900343559594,    0.4848721235878627
+%    ,    0.8912643942896993,    0.8987028229229337 ], 
+%    activation spec=identity,w=(2><3)
+%    [ 3.4768131213769315e-2, 2.8801478944654235e-2, 0.45180900343559594
+%    ,    0.4848721235878627,    0.8912643942896993,  0.8987028229229337 ], 
+%    activation spec=identity,w=(*** Exception: Inconsistent dimensions in 
+%    weight matrix
+%   \end{verbatim}
+%   So the user can tell that layer 3 is inconsistent with layer 2.
+%   I did create an alternative:
+%   \begin{verbatim}
+%   buildBackpropNet lr ws s = approvedWeights `deepseq` 
+%       BackpropNet { layers=ls, learningRate=lr }
+%     where checkedWeights = scanl1 checkDimensions ws
+%           ls = map buildLayer checkedWeights
+%           buildLayer w = Layer { lW=w, lAS=s }
+%           approvedWeights = concatMap toList (map flatten checkedWeights)
+%   \end{verbatim}
+%   But of course then the error message is less useful:
+%   \begin{verbatim}
+%   *** Exception: Inconsistent dimensions in weight matrix
+%   \end{verbatim}
+%   And modifying that code to say which layer the occurred at makes
+%   things more complex than I think a Haskell beginner is really ready for.
+%   }
 
 The primary advantage of using functions such as \verb+map+ and \verb+scanl1+ is not
 that they save a few lines of code over an equivalent \textit{for loop}, but that these functions
@@ -438,16 +439,16 @@ We use the following notation:
 
 \subsection{Propagating through one layer}
 
-The activation function for \ezy{Term not defined}\amy{I added the word ``function'' to clarify that I'm referring to the concept introduced in Section \ref{sec:artificialNeuron}.} neuron $k$ in layer $l$ is
+The activation function for neuron $k$ in layer $l$ is
 
-\ezy{Is the special case here necessary? In some treatments of neural networks I've seen, appropriate settings of $w$ are sufficient to make the second equation work out.  Obviously, if you do that you'll have to change your code too, but with any luck that would be for the better}
-\amy{I think I know what you mean.
-In early versions of the code, I had fixed weights for the sensor layer
-so that all layers had the same structure.
-However, I felt that the code would be somewhat more confusing to people
-who weren't very familiar with backprop. Eventually I re-vamped the code so 
-that it would parallel the presentation in Gurney \cite{gurney_introduction_1997} 
-and various web tutorials that I myself learned backprop from.}
+%   \ezy{Is the special case here necessary? In some treatments of neural networks I've seen, appropriate settings of $w$ are sufficient to make the second equation work out.  Obviously, if you do that you'll have to change your code too, but with any luck that would be for the better}
+%   \amy{I think I know what you mean.
+%   In early versions of the code, I had fixed weights for the sensor layer
+%   so that all layers had the same structure.
+%   However, I felt that the code would be somewhat more confusing to people
+%   who weren't very familiar with backprop. Eventually I re-vamped the code so 
+%   that it would parallel the presentation in Gurney \cite{gurney_introduction_1997} 
+%   and various web tutorials that I myself learned backprop from.}
 
 \begin{displaymath}
 a_{0k} = x_k
@@ -483,7 +484,7 @@ z_{lk} = f(a_{lk})
 
 where $f(a)$ is the activation function.
 For convenience, we define the function \verb+mapMatrix+ which applies a function to each element of a matrix (or column vector).
-This is analogous to Haskell's \verb+map+ function. \ezy{In fact, matrices are functors!}\amy{Good point, but I didn't want to introduce the concept of functors in this paper.}
+This is analogous to Haskell's \verb+map+ function.
 (The definition of this function is in the appendix.)
 Then we can calculate the layer's output using the Haskell expression \verb+mapMatrix f a+, where \verb+f+ is the activation function.
 
@@ -495,7 +496,7 @@ We will keep all of the necessary information in the following record structure.
 Note that anything between the symbol \verb+--+ and the end of a line is a comment
 and is ignored by the compiler.
 
-\begin{code}
+\begin{verbatim}
 data PropagatedLayer
     = PropagatedLayer
         {
@@ -516,7 +517,7 @@ data PropagatedLayer
           -- The output from this layer
           pOut :: ColumnVector Double
         }
-\end{code}
+\end{verbatim}
 
 This structure has two variants.
 For the sensor layer 
@@ -527,7 +528,7 @@ For all other layers (\verb+PropagatedLayer+),
 we need the full set of values.
 Now we are ready to define a function to propagate through a single layer.
 
-\begin{code}
+\begin{verbatim}
 propagate :: PropagatedLayer -> Layer -> PropagatedLayer
 propagate layerJ layerK = PropagatedLayer
         {
@@ -544,7 +545,7 @@ propagate layerJ layerK = PropagatedLayer
         y = P.mapMatrix f a
         f' = asF' ( lAS layerK )
         f'a = P.mapMatrix f' a
-\end{code}
+\end{verbatim}
 
 The operator \verb+<>+ performs matrix multiplication; it is defined in the \verb+hmatrix+ package.
 
@@ -558,19 +559,19 @@ this time with \verb+propagate+.
 The \verb+scanl+ function is similar to the \verb+scanl1+ function,
 except that it takes a starting value.
 
-\begin{code}
+\begin{verbatim}
 scanl f z [x1, x2, ...] == [z, f z x1, f (f z x1) x2), ...] 
-\end{code}
+\end{verbatim}
 
 In this case, the starting value is the sensor layer.
 
-\begin{code}
+\begin{verbatim}
 propagateNet :: ColumnVector Double -> BackpropNet -> [PropagatedLayer]
 propagateNet input net = tail calcs
   where calcs = scanl propagate layer0 (layers net)
         layer0 = PropagatedSensorLayer{ pOut=validatedInputs }
         validatedInputs = validateInput net input
-\end{code}
+\end{verbatim}
 
 The function \verb+validateInput+ verifies that the input vector has the correct length
 and that the elements are within the range [0,1].
@@ -624,10 +625,10 @@ the equations below.
   l=\overline{1,L}
 \end{displaymath}
 
-\ezy{<snip> Also, the paren-subscribe delta notation is a little odd.}
-\amy{This is the notation used in the source I'm referencing. 
-Can you suggest a better notation? I wouldn't want the reader to
-confuse it with $\nabla E_l$ or even $\nabla_{l}E$.}
+%   \ezy{<snip> Also, the paren-subscribe delta notation is a little odd.}
+%   \amy{This is the notation used in the source I'm referencing. 
+%   Can you suggest a better notation? I wouldn't want the reader to
+%   confuse it with $\nabla E_l$ or even $\nabla_{l}E$.}
 
 \begin{equation}
   \label{eq:dazzle}
@@ -644,7 +645,7 @@ The result of back-propagation through a single layer is stored in the structure
 The expression $\nabla_{z_l}E$ is not easily represented in ASCII text,
 so the name ``dazzle'' is used in the code.
 
-\begin{code}
+\begin{verbatim}
 data BackpropagatedLayer = BackpropagatedLayer
     {
       -- Del-sub-z-sub-l of E
@@ -663,7 +664,7 @@ data BackpropagatedLayer = BackpropagatedLayer
       -- The activation specification for this layer
       bpAS :: ActivationSpec
     }
-\end{code}
+\end{verbatim}
 
 The next step is to define the \verb+backpropagate+ function.
 For hidden layers, we use Equation (\ref{eq:dazzle}), repeated below.
@@ -682,9 +683,9 @@ So \verb|dazzleJ| is $\nabla_{z_l}E$,
 and \verb|f'aK| is $f'(a_{l+1})$.
 Thus, Equation (\ref{eq:dazzle}) is coded as
 
-\begin{code}
+\begin{verbatim}
 dazzleJ = wKT <> (dazzleK * f'aK)
-\end{code}
+\end{verbatim}
 
 The operator \verb+*+ appears between
 two column vectors, \verb+dazzleK+ and \verb+f'aK+,
@@ -692,7 +693,7 @@ so it calculates the Hadamard (element-wise) product rather than a scalar produc
 The \verb|backpropagate| function uses this expression,
 and also copies some fields from the original layer (prior to back-propagation).
 
-\begin{code}
+\begin{verbatim}
 backpropagate :: 
   PropagatedLayer -> BackpropagatedLayer -> BackpropagatedLayer
 backpropagate layerJ layerK = BackpropagatedLayer
@@ -714,12 +715,12 @@ backpropagate layerJ layerK = BackpropagatedLayer
 errorGrad :: ColumnVector Double -> ColumnVector Double -> 
   ColumnVector Double -> Matrix Double
 errorGrad dazzle f'a input = (dazzle * f'a) <> trans input
-\end{code}
-\ezy{The bits where the record is simply inheriting the old values from \verb|layerJ|; at the very least you could reduce line noise by using record update syntax instead of record creation, but also consider if there is an easy way to change the ADT so that these assignments are not necessary.  Also, if you're trying to make the point that Haskell looks a lot like the math which it is computing, it's probably worth recapping the relevant equations near the code so a direct visual comparison can be made (also, avoid temporary variables)}
-\amy{I can't use record update syntax because \verb|layerJ| is of type
-\verb|PropagatedLayer|, while the output is of type \verb|BackpropagatedLayer|.
-Those two types have different fields and different purposes, so I think it
-would be confusing and error-prone to merge them into one type. I did eliminate two temporary variables.}
+\end{verbatim}
+%   \ezy{The bits where the record is simply inheriting the old values from \verb|layerJ|; at the very least you could reduce line noise by using record update syntax instead of record creation, but also consider if there is an easy way to change the ADT so that these assignments are not necessary.  Also, if you're trying to make the point that Haskell looks a lot like the math which it is computing, it's probably worth recapping the relevant equations near the code so a direct visual comparison can be made (also, avoid temporary variables)}
+%   \amy{I can't use record update syntax because \verb|layerJ| is of type
+%   \verb|PropagatedLayer|, while the output is of type \verb|BackpropagatedLayer|.
+%   Those two types have different fields and different purposes, so I think it
+%   would be confusing and error-prone to merge them into one type. I did eliminate two temporary variables.}
 
 The function \verb+trans+, used in the definition of \verb|wKT|,
 calculates the transpose of a matrix.
@@ -732,7 +733,7 @@ The final layer uses Equation (\ref{eq:dazzleL}), repeated below.
 In the function \verb|backpropagateFinalLayer|,
 \verb|dazzle| is $\nabla_{z_L}E$.
 
-\begin{code}
+\begin{verbatim}
 backpropagateFinalLayer ::
     PropagatedLayer -> ColumnVector Double -> BackpropagatedLayer
 backpropagateFinalLayer l t = BackpropagatedLayer
@@ -747,7 +748,7 @@ backpropagateFinalLayer l t = BackpropagatedLayer
     }
     where dazzle =  pOut l - t
           f'a = pF'a l
-\end{code}
+\end{verbatim}
 
 
 \subsection{Back-propagating through the network}
@@ -769,21 +770,21 @@ provide a layer of abstraction that is ideally suited to back-propagation.
 \end{figure}
 
 The definition of the \verb+backpropagateNet+ function is very similar to that of \verb+propagateNet+.
-\begin{code}
+\begin{verbatim}
 backpropagateNet :: 
   ColumnVector Double -> [PropagatedLayer] -> [BackpropagatedLayer]
 backpropagateNet target layers = scanr backpropagate layerL hiddenLayers
   where hiddenLayers = init layers
         layerL = backpropagateFinalLayer (last layers) target
-\end{code}
-\ezy{Ick, not a fan of init and last}
-\amy{What would you suggest in their place?
-I'm probably being a bit thick here, but the only alternatives to 
-init and last that I can think of are splitAt (length xs - 1) xs,
-or doing a reverse, then pattern match on (x:xs), 
-and then doing a reverse on xs.
-I think both of those would be confusing to an audience that is new to
-functional programming.}
+\end{verbatim}
+%   \ezy{Ick, not a fan of init and last}
+%   \amy{What would you suggest in their place?
+%   I'm probably being a bit thick here, but the only alternatives to 
+%   init and last that I can think of are splitAt (length xs - 1) xs,
+%   or doing a reverse, then pattern match on (x:xs), 
+%   and then doing a reverse on xs.
+%   I think both of those would be confusing to an audience that is new to
+%   functional programming.}
 
 \subsection{Updating the weights}
 \label{sec:updateWeights}
@@ -798,13 +799,13 @@ which is repeated below.
 \end{equation}
 The code is shown below.
 
-\begin{code}
+\begin{verbatim}
 update :: Double -> BackpropagatedLayer -> Layer
 update rate layer = Layer { lW = wNew, lAS = bpAS layer }
     where wOld = bpW layer
           delW = rate `scale` bpErrGrad layer
           wNew = wOld - delW
-\end{code}
+\end{verbatim}
 
 The parameter name \verb+rate+ is used for the learning rate $\mu$,
 and the local variable \verb+rate+ represents the second term in
@@ -860,7 +861,7 @@ In order to test this property, we require an input vector, layer,
 and training vector, all with consistent dimensions.
 We tell QuickCheck how to generate suitable test data as follows:
 
-\begin{code}
+\begin{verbatim}
 -- A layer with suitable input and target vectors, suitable for testing.
 data LayerTestData = 
   LTD (ColumnVector Double) Layer (ColumnVector Double)
@@ -877,11 +878,11 @@ sizedLayerTestData n = do
 
 instance Arbitrary LayerTestData where
   arbitrary = sized sizedLayerTestData
-\end{code}
+\end{verbatim}
 
 The test for the hidden layer is shown below.
 
-\begin{code}
+\begin{verbatim}
 -- Training reduces error in the final (output) layer
 prop_trainingReducesFinalLayerError :: LayerTestData -> Property
 prop_trainingReducesFinalLayerError (LTD x l t) =
@@ -900,7 +901,7 @@ prop_trainingReducesFinalLayerError (LTD x l t) =
                   -- make sure we don't overshoot the mark
               plNew = propagate pl0 lNew
               errorAfter =  P.magnitude (t - pOut plNew)
-\end{code}
+\end{verbatim}
 
 The \verb+$+ operator enhances readability of the code by allowing
 us to omit some parenthesis: \verb+f . g . h $ x == (f . g . h) x+.
@@ -920,14 +921,14 @@ consist of short patterns and a network with a small total number of neurons.
 
 We can run the test in \verb+GHCi+, an interactive Haskell REPL.
 
-\begin{Verbatim}
+\begin{verbatim}
 ghci> quickCheck prop_trainingReducesFinalLayerError
 +++ OK, passed 100 tests:
 62% len x 0..25
 24% len x 26..50
 12% len x 51..75
  2% len x 76..100
-\end{Verbatim}
+\end{verbatim}
 
 By default, QuickCheck runs 100 test cases.
 Of these, 62\% of the patterns tested were of length 25 or less.
@@ -936,7 +937,7 @@ the test of 10,000 cases below ran in 20 seconds on a 3.00GHz quad core processo
 It would not have been practical to write unit tests for this many cases,
 so the benefit of property-based testing as a supplement to unit testing is clear.
 
-\begin{Verbatim}
+\begin{verbatim}
 ghci> quickCheckWith Args{replay=Nothing, maxSuccess=10000, 
 maxDiscard=100, maxSize=100} prop_trainingReducesFinalLayerError
 +++ OK, passed 10000 tests:
@@ -944,7 +945,7 @@ maxDiscard=100, maxSize=100} prop_trainingReducesFinalLayerError
 25% len x 26..50
 12% len x 51..75
  3% len x 76..100
-\end{Verbatim}
+\end{verbatim}
 
 \section{Conclusions}
 \label{sec:conclusions}
@@ -996,7 +997,10 @@ And some primarily functional languages, such as OCaml, provide mechanisms for d
 A complete code listing, along with a sample character recognition application,
 is available online~\cite{deBuitleir-backprop-example}.
 
+\begingroup
+\raggedright
 \bibliography{deBuitleir}
+\endgroup
 
 
 \end{document}

@@ -180,11 +180,9 @@ where {\textbf R\textsuperscript{*}} denotes the partial product matrix.
 
 \section{Haskell Implementation}
 
-The repa library offers efficient operations over arrays; the data
+The repa library \cite{repa} offers efficient operations over arrays; the data
 structures and the functions of this library will be the basis for our
 implementation.
-%
-You can find a repa tutorial here~\cite{repa}.
 
 \begin{lstlisting}[float,captionpos=b,belowcaptionskip=4pt, caption= Jacobi Method]
 import Data.Array.Repa  as R
@@ -369,7 +367,7 @@ matrixR !arr (Parameters !maxElem !t !s !tau !k !l) n m
 
 As we already know, Haskell is a non-strict language, where major
 implementations (for example, GHC) use a strategy called call-by-need or
-laziness to evaluate the code~\cite{Laziness}.
+laziness to evaluate the code.
 
 There is a slight difference between laziness and non-strictness. Non-strict
 semantics refers to a given property of Haskell programs that you can rely on: 
@@ -450,12 +448,11 @@ with OpenSuSE 11.4 x64.
 \begin{table}[float,captionpos=b,belowcaptionskip=4pt]
 \begin{center}
     \begin{tabular}{ l l l l }
-\hline  Prototype & Threads & Total Memory (MB) & Productivity (\%) \\ 
-\hline  Python  & 1 & -  & 99   \\
-\hline  Haskell -N1 & 1 & 8  & 95.6  \\
-\hline  Haskell -N2 & 2 & 11 & 95.9  \\
-\hline  Haskell -N4 & 3 & 14 & 96.7   \\
-\hline
+Prototype & Threads & Total Memory (MB) & Productivity (\%) \\ 
+\hline Python  & 1 & -  & 99   \\
+Haskell -N1 & 1 & 8  & 95.6  \\
+Haskell -N2 & 2 & 11 & 95.9  \\
+Haskell -N4 & 3 & 14 & 96.7   \\
     \end{tabular} 
 \end{center}
 \label{tab:first}
@@ -473,7 +470,7 @@ Provided that Haskell
 delivers parallel garbage collection (from GHC 7.0 onwards) we tried to perform as much memory management in parallel
 as mutation activity, in order to free mutator threads (running repa threads mainly) from garbage related work.
 
-From the GHC manual ~\cite{ghc} we found some experimental switches to allow the RTS to perform such activities in parallel
+From the GHC manual ~\cite{ghc}, we found some experimental switches to allow the RTS to perform such activities in parallel
 with user code and also the possibility of performing parallel garbage collection only on younger generations.
 We tried to see if this set-up would allow repa threads to run concurrently with garbage collection without  
 disrupting each other.
@@ -494,12 +491,12 @@ readers to test and validate our measurements.
 \begin{table}[float,captionpos=b,belowcaptionskip=4pt]
 \begin{center}
     \begin{tabular}{ l l l l l }
-\hline  Prototype  & Mutator Time & Mutator (elapsed) & GC Time & GC (elapsed) \\ 
-\hline  Python   & 60.2s   & -      & -    & - \\
-\hline  Haskell -N1 & 47.0s   & 46.8s  & 2.2s & 2.2s \\
-\hline  Haskell -N2  & 49.2s   & 34.8s  & 2.1s & 1.8s \\
-\hline  Haskell -N4  & 63.8s   & 35.0s  & 2.2s & 1.9s  \\
-\hline
+Prototype  & Mutator Time & Mutator (elapsed) & GC Time & GC (elapsed) \\ 
+\hline Python   & 60.2s   & -      & -    & - \\
+Haskell -N1 & 47.0s   & 46.8s  & 2.2s & 2.2s \\
+Haskell -N2  & 49.2s   & 34.8s  & 2.1s & 1.8s \\
+Haskell -N4  & 63.8s   & 35.0s  & 2.2s & 1.9s  \\
+
     \end{tabular} 
 \end{center}
 \label{tab:second}
@@ -725,7 +722,7 @@ The function for calculating the matrix requires the nuclear coordinates of all 
 for expanding the monoelectronic functions, the charge of each atom (the \textit{Znumber}, necessary to
 calculate the attraction between the nuclei and electrons), and the number of electrons. First, we
 calculate the entries of the matrix as a parallel list with a parallel strategy
-(see more about strategies here :~\cite{strategies}). In order to take maximal advantage
+(see more about strategies at~\cite{strategies}). In order to take maximal advantage
 of sparks, a right level of granularity must be chosen;
 each monoelectronic function should contain
 a minimal set (minimal number of Gaussian functions) in order to balance the workload
@@ -1040,7 +1037,7 @@ a diagonal matrix.
 
 The \textit{map2Array} function returns a delayed array for performance reasons: it is more efficient
 to carry the indices of the elements, perform some operations with them, and finally
-evaluate the whole array, rather than compute the array in each step~\cite{fusion}.
+evaluate the whole array, rather than compute the array in each step~\cite{repa}.
 
 \subsection{The Self Consistent Field Procedure}
 
@@ -1267,34 +1264,9 @@ Professor Luis Manuel Frutos for his patient
 and thorough support; without
 him, we would have been lynched by now!
 
-
-\begin{thebibliography}{12}
-
-\bibitem{Skibinski}
-  http://www.haskell.org/haskellwiki/Numeric\_Quest
-\bibitem{repa}
- http://www.haskell.org/haskellwiki/Numeric\_Haskell:\_A\_Repa\_Tutorial
-\bibitem{Laziness}
-  https://en.wikibooks.org/wiki/Haskell/Laziness
-\bibitem{Strictness}
-  http://www.haskell.org/haskellwiki/Performance/Strictness
-\bibitem{bang}
-  http://hackage.haskell.org/packages/archive/repa/3.2.2.2/doc/html/Data-Array-Repa.html
-\bibitem{Peyton}
-  http://www.aosabook.org/en/ghc.html
-\bibitem{ghc}
-  http://www.haskell.org/ghc/docs/latest/html/users\_guide/
-\bibitem{strategies}
-  http://hackage.haskell.org/packages/archive/parallel/2.2.0.1/doc/html/Control-Parallel-Strategies.html
-\bibitem{repaExam}
-  http://hackage.haskell.org/package/repa-examples
-\bibitem{fusion}
-  http://www.cse.unsw.edu.au/~benl/papers/guiding/guiding-Haskell2012-sub.pdf
-\bibitem{software}
-  http://en.wikipedia.org/wiki/List\_of\_quantum\_chemistry\_and\_solid-state\_physics\_software
-\bibitem{banned}
-  http://www.bannedbygaussian.org/
-
-\end{thebibliography}
+\begingroup
+\raggedright
+\bibliography{Jacobi}
+\endgroup
 
 \end{document}

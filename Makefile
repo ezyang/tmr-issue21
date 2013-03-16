@@ -21,6 +21,7 @@ clean:
 # put .bib files here
 bib :
 	bibtex deBuitleir
+	bibtex Jacobi
 
 final : $(issue).pdf bib
 	pdflatex $(issue).tex
