@@ -18,8 +18,8 @@
 \issue{Issue 21}
 
 \author{Amy de Buitl\'eir\email{amy.butler@@ericsson.com}}
-\author{Michael Russell\email{mrussell@@ait.ie}}
-\author{Mark Daly\email{mdaly@@ait.ie}}
+\author{Felipe Zapata\email{felipe.zapata@@edu.uah.es}}
+\author{Angel J. Alvarez\email{a.alvarez@@uah.es}}
 
 \publishers{Edward Z. Yang, editor.}
 
