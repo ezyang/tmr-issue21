@@ -466,25 +466,25 @@ consistently spent several seconds on garbage collection.
 
 % ezyang: this needs some cleanup
 
-Provided that Haskell
-delivers parallel garbage collection (from GHC 7.0 onwards) we tried to perform as much memory management in parallel
-as mutation activity, in order to free mutator threads (running repa threads mainly) from garbage related work.
+Since Haskell
+delivers parallel garbage collection (from GHC 7.0 onwards), we tried to perform as much memory management in parallel
+with mutation activity, in order to free mutator threads (running repa threads mainly) from garbage related work.
 
 From the GHC manual ~\cite{ghc}, we found some experimental switches to allow the RTS to perform such activities in parallel
 with user code and also the possibility of performing parallel garbage collection only on younger generations.
 We tried to see if this set-up would allow repa threads to run concurrently with garbage collection without  
 disrupting each other.
 
-As it is shown in Table \ref{tab:first}, We record the estimated memory side in the 
-Haskell prototypes just to see the effects of different switches in the RTS. While in the Python
+As shown in Table 1, we record the estimated memory side in the 
+Haskell prototypes just to see the effects of different switches in the RTS. In the Python
 prototype, we did not measure any memory usage at all. Also, we tried to see the overall effect of 
-increasing the available cores (mainly the effect in the garbage collector). As you can see in Table
-\ref{tab:second} the maximal performance is achieved with two cores, adding more core does not speed up
-the calculation at this step of development. Further test will be carry out in the future.
+increasing the available cores on the garbage collector. As you can see in Table
+2, the maximal performance is achieved with two cores; adding more cores does not speed up
+the calculation at this step of development. Further tests will be carried out in the future.
 
-Being almost newcomers on this arena, we still are not certain about what is going on,
-but in the end we manage to low the running times (mostly by lowering garbage collection times)
-but this is a matter we will work in the future (we are afraid of that). Therefore we will
+Being newcomers in this arena, we still are not certain about what is going on.
+In the end, we managed to lower the running times (mostly by lowering garbage collection times).
+However, this is a matter we will work in the future. Therefore, we will
 provide criterion based benchmarking facilities in our cabal package to allow 
 readers to test and validate our measurements.
 
